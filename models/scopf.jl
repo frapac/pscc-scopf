@@ -14,6 +14,7 @@ function scopf_model(
     scale_obj=1e-4,
     scale_cc=1e-3,
     load_factor=1.0,
+    use_mpec=true,
     adjust=:droop,
     voltage_control=:none,
 )

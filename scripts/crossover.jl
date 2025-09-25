@@ -4,6 +4,7 @@ using NLPModels
 using LinearAlgebra
 using SparseArrays
 using HiGHS
+using Gurobi
 using Printf
 
 struct LPEC
@@ -57,19 +58,32 @@ function update!(lpec::LPEC, nlp::AbstractNLPModel, x)
     return
 end
 
-function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2)
+function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2; solver=:gurobi)
     ind_cc1, ind_cc2 = lpcc.ind_cc1, lpcc.ind_cc2
     J = sparse(lpcc.Ji, lpcc.Jj, lpcc.Jx, lpcc.m, lpcc.n)
     n = lpcc.n
     n0 = length(I0)
     M = 1000.0
-    model = Model(HiGHS.Optimizer)
-    JuMP.set_optimizer_attribute(model, "kkt_tolerance", 1e-8)
-    JuMP.set_optimizer_attribute(model, "mip_feasibility_tolerance", 1e-8)
-    JuMP.set_optimizer_attribute(model, "optimality_tolerance", 1e-8)
-    JuMP.set_optimizer_attribute(model, "mip_rel_gap", 1e-4)
-    JuMP.set_optimizer_attribute(model, "mip_abs_gap", 1e-9)
-    # JuMP.set_silent(model)
+    if solver == :gurobi
+        model = Model(Gurobi.Optimizer)
+        JuMP.set_optimizer_attribute(model, "FeasibilityTol", 1e-6)
+        JuMP.set_optimizer_attribute(model, "IntFeasTol", 1e-6)
+        JuMP.set_optimizer_attribute(model, "OptimalityTol", 1e-6)
+        JuMP.set_optimizer_attribute(model, "MIPGap", 1e-4)
+        JuMP.set_optimizer_attribute(model, "MIPGapAbs", 1e-9)
+        JuMP.set_optimizer_attribute(model, "MIPFocus", 1)
+        JuMP.set_optimizer_attribute(model, "Presolve", 1)
+    elseif solver == :highs
+        model = Model(HiGHS.Optimizer)
+        JuMP.set_optimizer_attribute(model, "kkt_tolerance", 1e-6)
+        JuMP.set_optimizer_attribute(model, "mip_feasibility_tolerance", 1e-6)
+        JuMP.set_optimizer_attribute(model, "optimality_tolerance", 1e-6)
+        JuMP.set_optimizer_attribute(model, "mip_rel_gap", 1e-4)
+        JuMP.set_optimizer_attribute(model, "mip_abs_gap", 1e-9)
+        JuMP.set_optimizer_attribute(model, "presolve", "on")
+        JuMP.set_attribute(model, HiGHS.ComputeInfeasibilityCertificate(), false)
+    end
+    #JuMP.set_silent(model)
     @variable(model, -rho <= d[1:lpcc.n] <= rho)
     @variable(model, y[1:n0], Bin)
     @objective(model, Min, dot(lpcc.g, d))
@@ -88,6 +102,10 @@ function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2)
     @constraint(model, [i in I0], x[ind_cc2[i]] + d[ind_cc2[i]] >= lpcc.lvar[ind_cc2[i]])
     @constraint(model, [i in 1:n0], x[ind_cc1[I0[i]]] + d[ind_cc1[I0[i]]] - lpcc.lvar[ind_cc1[i]] <= M * y[i])
     @constraint(model, [i in 1:n0], x[ind_cc2[I0[i]]] + d[ind_cc2[I0[i]]] - lpcc.lvar[ind_cc2[i]] <= M * (1.0 - y[i]))
+
+    set_start_value.(d[1:lpcc.n], 0.0)
+    #set_start_value.(y[1:n0], 0.0)
+
     return model
 end
 
@@ -96,22 +114,24 @@ function find_partition(lpcc::LPEC, x, tol)
     partition = zeros(Int, lpcc.n_cc)
     for i in 1:lpcc.n_cc
         x1, x2 = x[ind_cc1[i]], x[ind_cc2[i]]
-        if x1 <= tol && x2 <= tol
+        lx1, lx2 = lpcc.lvar[ind_cc1[i]], lpcc.lvar[ind_cc2[i]]
+        if x1-lx1 <= tol && x2-lx2 <= tol
             partition[i] = 0
-        elseif x1 <= tol
+        elseif x1-lx1 <= tol
             partition[i] = 1
-        elseif x2 <= tol
+        elseif x2-lx2 <= tol
             partition[i] = 2
         else
             println((i, x1, x2))
             error("Current point is not feasible")
         end
+        #println("I: $(partition[i]) $(x1 - lx1), $(x2 - lx2)")
     end
     return partition
 end
 
 function solve_lpec!(lpcc::LPEC, x, rho)
-    partition = find_partition(lpcc, x, 1e-8)
+    partition = find_partition(lpcc, x, rho)
     I0 = findall(isequal(0), partition)
     I1 = findall(isequal(1), partition)
     I2 = findall(isequal(2), partition)
@@ -128,7 +148,7 @@ function solve_lpec!(lpcc::LPEC, x, rho)
         partition[i] = 2
     end
     for k in 1:length(I0)
-        partition[I0[k]] = y[k] + 1
+        partition[I0[k]] = y[k] >= 0.5 ? 2 : 1
     end
     return d, partition
 end
@@ -139,17 +159,25 @@ function solve_branch_nlp!(lpcc, nlp, partition)
     for k in 1:lpcc.n_cc
         i1, i2 = ind_cc1[k], ind_cc2[k]
         if partition[k] == 1 # belong to I1
+            #print("Pushing x[$(i1)] by $(nlp.meta.x0[i1] - nlp.meta.lvar[i1])")
             nlp.meta.x0[i1] = nlp.meta.lvar[i1]
             nlp.meta.uvar[i1] = nlp.meta.lvar[i1]
+
+            #println(" And x[$(i2)] upper bound is $(lpcc.uvar[i2])")
             nlp.meta.uvar[i2] = lpcc.uvar[i2]
         else                 # belong to I2
             nlp.meta.uvar[i1] = lpcc.uvar[i1]
+
+            #print("Pushing x[$(i2)] by $(nlp.meta.x0[i2] - nlp.meta.lvar[i2])")
             nlp.meta.x0[i2] = nlp.meta.lvar[i2]
             nlp.meta.uvar[i2] = nlp.meta.lvar[i2]
+
+            #println(" and x[$(i1)] upper bound is $(lpcc.uvar[i1])")
         end
     end
     # Call MadNLP
-    return madnlp(nlp; linear_solver=Ma27Solver, print_level=MadNLP.ERROR)
+    return madnlp(nlp; linear_solver=Ma27Solver, print_level=MadNLP.ERROR,
+                  bound_push=1e-6, bound_fac=1e-6, bound_relax_factor=0.0)
 end
 
 function mpecopt!(
@@ -169,13 +197,19 @@ function mpecopt!(
     status = MadNLP.INITIAL
 
     println("Starting crossover method using MPECopt.")
+    bnlp_feasible = false
 
     for i in 1:max_iter
         update!(lpcc, nlp, x)
         # Solve LPCC
         (d, partition) = solve_lpec!(lpcc, x, tr_radius)
+        println(norm(d,Inf))
         if norm(d, Inf) <= tol
             status = MadNLP.SOLVE_SUCCEEDED
+            break
+        elseif bnlp_feasible && abs(dot(d, lpcc.g)) <= tol
+            status = MadNLP.SOLVE_SUCCEEDED
+            println("feasible BNLP with negligible descent direction")
             break
         elseif tr_radius <= tr_min
             status = MadNLP.SEARCH_DIRECTION_BECOMES_TOO_SMALL
@@ -185,9 +219,14 @@ function mpecopt!(
         nlp.meta.x0 .= x
         results = solve_branch_nlp!(lpcc, nlp, partition)
         # Update parameters
-        if results.objective < current_objective
-            current_objective = results.objective
-            x .= results.solution
+        if results.status == MadNLP.SOLVE_SUCCEEDED
+            bnlp_feasible = true
+            if results.objective < current_objective
+                current_objective = results.objective
+            else
+                tr_radius *= tr_alpha
+            end
+            x .= results.solution # Update solution since the BNLP succeeded.
         else
             tr_radius *= tr_alpha
         end

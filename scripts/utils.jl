@@ -21,7 +21,7 @@ function _vertical_formulation!(model, terms::Vector{MOI.ScalarAffineTerm{T}}, c
 end
 
 function parse_ccons!(model; reformulation=:mpec)
-    moimodel = backend(model)
+    moimodel = JuMP.backend(model)
     ind_cc1, ind_cc2 = Int[], Int[]
 
     contypes = MOI.get(moimodel, MOI.ListOfConstraintTypesPresent())

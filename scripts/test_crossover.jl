@@ -12,8 +12,10 @@ include(joinpath(@__DIR__, "..", "models", "scopf.jl"))
 include(joinpath(@__DIR__, "..", "scripts", "utils.jl"))
 include(joinpath(@__DIR__, "..", "scripts", "crossover.jl"))
 DATA_DIR = ENV["MATPOWER_DIR"]
-case = "case14"
-contingencies = [3, 4, 5, 8, 9, 11, 12, 13]
+case = "case300"
+nK = 8
+screen = readdlm("data/screening/$(case).txt")
+contingencies = findall(screen[:, 4] .== 0)[1:nK]
 
 ###
 # Step 1: run phase I with MadNCL
@@ -60,18 +62,26 @@ stats = @time MadNCL.madncl(
 x = copy(stats.solution)
 
 # Project solution onto feasible set
-n_cc = length(ind_cc1)
-tol = 1e-6
-for k in 1:n_cc
-    x1, x2 = x[ind_cc1[k]], x[ind_cc2[k]]
-    if max(x1, x2) <= sqrt(tol)
-        x[ind_cc1[k]] = 0.0
-        x[ind_cc2[k]] = 0.0
-    elseif x1 <= tol
-        x[ind_cc1[k]] = 0.0
-    elseif x2 <= tol
-        x[ind_cc2[k]] = 0.0
-    end
-end
+# n_cc = length(ind_cc1)
+# tol = 1e-6
+# for k in 1:n_cc
+#     x1, x2 = x[ind_cc1[k]], x[ind_cc2[k]]
+#     if max(x1, x2) <= sqrt(tol)
+#         x[ind_cc1[k]] = 0.0
+#         x[ind_cc2[k]] = 0.0
+#     elseif x1 <= tol
+#         x[ind_cc1[k]] = 0.0
+#     elseif x2 <= tol
+#         x[ind_cc2[k]] = 0.0
+#     end
+# end
 
-mpecopt!(nlp, ind_cc1, ind_cc2, x; tol=1e-5, tr_radius=1e-2)
+c = cons(nlp, x)
+
+# for i=1:length(c)
+#     if c[i]<nlp.meta.lcon[i] - 1e-8 || c[i]>nlp.meta.ucon[i] + 1e-8
+#         println("$(i): $(nlp.meta.lcon[i]) <= $(c[i]) <= $(nlp.meta.ucon[i])")
+#     end
+# end
+
+mpecopt!(nlp, ind_cc1, ind_cc2, x; tol=1e-6, tr_radius=1e-3, max_iter=10)

@@ -1,7 +1,7 @@
 using JuMP
 using PowerModels
 
-function contingency_problem(file_name, base_case, contingency; load_factor=1.0)
+function contingency_problem(file_name, base_case, contingency; load_factor=1.0, use_mpec=false)
     data = PowerModels.parse_file(file_name)
     PowerModels.standardize_cost_terms!(data, order=2)
     PowerModels.calc_thermal_limits!(data)
@@ -65,8 +65,13 @@ function contingency_problem(file_name, base_case, contingency; load_factor=1.0)
     for (j, i) in enumerate(keys(ref[:gen]))
         pmin, pmax = ref[:gen][i]["pmin"], ref[:gen][i]["pmax"]
         @constraint(model, ρp[i] - ρn[i] == pg[i] - base_case.pg[i] - alpha[j] * Δ)
-        @constraint(model, ρn[i] * (pmax - pg[i]) <= 0.0)
-        @constraint(model, ρp[i] * (pg[i] - pmin) <= 0.0)
+        if use_mpec
+            @constraint(model, [(pmax - pg[i]), ρn[i]] in MOI.Complements(2))
+            @constraint(model, [(pg[i] - pmin), ρp[i]] in MOI.Complements(2))
+        else
+            @constraint(model, ρn[i] * (pmax - pg[i]) <= 0.0)
+            @constraint(model, ρp[i] * (pg[i] - pmin) <= 0.0)
+        end
     end
 
     # Voltage magnitude are not adjusted at PV buses
@@ -75,10 +80,18 @@ function contingency_problem(file_name, base_case, contingency; load_factor=1.0)
         qmin, qmax = ref[:gen][g]["qmin"], ref[:gen][g]["qmax"]
         @constraint(model, vp[g] - vn[g] == vm[b] - base_case.vm[b])
         if isfinite(qmax)
-            @constraint(model, vn[g] * (qmax - qg[g]) <= 0.0)
+            if use_mpec
+                @constraint(model, [(qmax - qg[g]), vn[g]] in MOI.Complements(2))
+            else
+                @constraint(model, vn[g] * (qmax - qg[g]) <= 0.0)
+            end
         end
         if isfinite(qmin)
-            @constraint(model, vp[g] * (qg[g] - qmin) <= 0.0)
+            if use_mpec
+                @constraint(model, vp[g] * (qg[g] - qmin) <= 0.0)
+            else
+                @constraint(model, [(qg[g] - qmin), vp[g]] in MOI.Complements(2))
+            end
         end
     end
 

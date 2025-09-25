@@ -67,7 +67,7 @@ function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2)
     JuMP.set_optimizer_attribute(model, "optimality_tolerance", 1e-8)
     JuMP.set_optimizer_attribute(model, "mip_rel_gap", 1e-4)
     JuMP.set_optimizer_attribute(model, "mip_abs_gap", 1e-9)
-    JuMP.set_silent(model)
+    # JuMP.set_silent(model)
     @variable(model, -rho <= d[1:lpcc.n] <= rho)
     @variable(model, y[1:n0], Bin)
     @objective(model, Min, dot(lpcc.g, d))
@@ -89,7 +89,7 @@ function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2)
     return model
 end
 
-function find_partition(lpcc::LPEC, x; tol=1e-4)
+function find_partition(lpcc::LPEC, x, tol)
     ind_cc1, ind_cc2 = lpcc.ind_cc1, lpcc.ind_cc2
     partition = zeros(Int, lpcc.n_cc)
     for i in 1:lpcc.n_cc
@@ -109,7 +109,7 @@ function find_partition(lpcc::LPEC, x; tol=1e-4)
 end
 
 function solve_lpec!(lpcc::LPEC, x, rho)
-    partition = find_partition(lpcc, x; tol=rho)
+    partition = find_partition(lpcc, x, 1e-8)
     I0 = findall(isequal(0), partition)
     I1 = findall(isequal(1), partition)
     I2 = findall(isequal(2), partition)
@@ -146,12 +146,12 @@ function solve_branch_nlp!(lpcc, nlp, partition)
             nlp.meta.uvar[i2] = nlp.meta.lvar[i2]
         end
     end
-    #
     # Call MadNLP
     return madnlp(nlp; linear_solver=Ma27Solver, print_level=MadNLP.ERROR)
 end
 
-function mpecopt!(nlp,
+function mpecopt!(
+    nlp,
     ind_cc1,
     ind_cc2,
     x;
@@ -196,6 +196,3 @@ function mpecopt!(nlp,
     nlp.meta.uvar .= lpcc.uvar
     return status, x
 end
-
-x = copy(stats.solution)
-mpecopt!(nlp, ind_cc1, ind_cc2, x; tol=1e-5)

@@ -76,7 +76,7 @@ results = benchmark_scopf(;
     linear_solver=Ma57Solver,
     max_iter=500,
     nlp_scaling=false,
-    kkt_system=MadNCL.K2rAuglagKKTSystem,
-    scaling=false,
+    kkt_system=MadNCL.K1sAuglagKKTSystem,
+    scaling=true,
     ncl_options=ncl_options,
 )

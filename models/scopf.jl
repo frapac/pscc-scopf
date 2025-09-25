@@ -59,10 +59,13 @@ function scopf_model(
                 @constraint(model, pg[i, k] == pg[i, 1] + alpha[j] * Δ[k-1])
             elseif adjust == :mpecdroop
                 @constraint(model, ρp[i, k] - ρn[i, k] == pg[i, k] - pg[i, 1] - alpha[j] * Δ[k-1])
-                @constraint(model, scale_cc * ρn[i, k] * (pmax - pg[i, k]) <= 0.0)
-                @constraint(model, scale_cc * ρp[i, k] * (pg[i, k] - pmin) <= 0.0)
-                # @constraint(model, [ρn[i, k], (pmax - pg[i, k])] in MOI.Complements(2))
-                # @constraint(model, [ρp[i, k], (pg[i, k] - pmin)] in MOI.Complements(2))
+                if use_mpec
+                    @constraint(model, [(pmax - pg[i, k]), ρn[i, k]] in MOI.Complements(2))
+                    @constraint(model, [(pg[i, k] - pmin), ρp[i, k]] in MOI.Complements(2))
+                else
+                    @constraint(model, scale_cc * ρn[i, k] * (pmax - pg[i, k]) <= 0.0)
+                    @constraint(model, scale_cc * ρp[i, k] * (pg[i, k] - pmin) <= 0.0)
+                end
             elseif adjust == :preventive
                 @constraint(model, pg[i, k] == pg[i, 1])
             elseif adjust == :relaxed
@@ -77,12 +80,18 @@ function scopf_model(
                 qmin, qmax = ref[:gen][g]["qmin"], ref[:gen][g]["qmax"]
                 @constraint(model, vp[g, k] - vn[g, k] == vm[b, k] - vm[b, 1])
                 if isfinite(qmax)
-                    @constraint(model, scale_cc * vn[g, k] * (qmax - qg[g, k]) <= 0.0)
-                    # @constraint(model, [vn[g, k], (qmax - qg[g, k])] in MOI.Complements(2))
+                    if use_mpec
+                        @constraint(model, [(qmax - qg[g, k]), vn[g, k]] in MOI.Complements(2))
+                    else
+                        @constraint(model, scale_cc * vn[g, k] * (qmax - qg[g, k]) <= 0.0)
+                    end
                 end
                 if isfinite(qmin)
-                    @constraint(model, scale_cc * vp[g, k] * (qg[g, k] - qmin) <= 0.0)
-                    # @constraint(model, [vp[g, k], (qg[g, k] - qmin)] in MOI.Complements(2))
+                    if use_mpec
+                        @constraint(model, [(qg[g, k] - qmin), vp[g, k]] in MOI.Complements(2))
+                    else
+                        @constraint(model, scale_cc * vp[g, k] * (qg[g, k] - qmin) <= 0.0)
+                    end
                 end
             else
                 @constraint(model, vm[b, k] == vm[b, 1])

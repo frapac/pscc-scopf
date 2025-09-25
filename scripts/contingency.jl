@@ -20,7 +20,8 @@ using ExaModels
 
 PowerModels.silence()
 
-include("opf.jl")
+include(joinpath(@__DIR__, "..", "models", "opf.jl"))
+include(joinpath(@__DIR__, "..", "models", "contingency.jl"))
 
 function extract_solution(model)
     return (
@@ -109,22 +110,7 @@ end
 
 DATA_DIR = "/home/fpacaud/dev/matpower/data"
 
-cases = [
-    # "case9",
-    # "case14",
-    # "case300",
-    # "case1354pegase",
-    "case2869pegase",
-    # "case_ACTIVSg200",
-    # "case_ACTIVSg500",
-    # "case_ACTIVSg2000",
-]
-
-for case in cases
-    println()
-    @info case
-    instance = joinpath(DATA_DIR, "$(case).m")
-    screen = screen_contingency(instance; max_cont=200)
-    writedlm("data/screening/$(case).txt", screen)
-end
+case = "case118"
+instance = joinpath(DATA_DIR, "$(case).m")
+screen = @time screen_contingency(instance; max_cont=200)
 

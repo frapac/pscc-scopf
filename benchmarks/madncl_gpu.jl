@@ -1,13 +1,23 @@
 
+
 using DelimitedFiles
 using NLPModels
 using MadNLP, MadNLPHSL
 using MadNCL
 using ExaModels
 
+using MadNLPGPU
+using CUDA
+
 include(joinpath(@__DIR__, "..", "models", "scopf.jl"))
 include(joinpath(@__DIR__, "..", "scripts", "utils.jl"))
 include(joinpath(@__DIR__, "common.jl"))
+
+function refresh()
+    GC.gc(true)
+    CUDA.reclaim()
+    GC.gc(true)
+end
 
 function benchmark_scopf(; options...)
     n = length(CASES)
@@ -28,14 +38,13 @@ function benchmark_scopf(; options...)
             load_factor=1.0,
         )
 
-        nlp = ExaModels.ExaModel(model)
+        nlp = ExaModels.ExaModel(model; backend=CUDABackend())
 
         ncl_options = MadNCL.NCLOptions{Float64}(;
             opt_tol=1e-6,
             feas_tol=1e-6,
             slack_reset=false,
             scaling=false,
-            extrapolation=true,
         )
 
         res = @time MadNCL.madncl(
@@ -54,6 +63,8 @@ function benchmark_scopf(; options...)
         results[k, 8] = res.counters.total_time
 
         k += 1
+
+        refresh()
     end
     names = [case for (case, _) in CASES]
     return [names results]
@@ -61,14 +72,14 @@ end
 
 results = benchmark_scopf(;
     print_level=MadNLP.ERROR,
-    linear_solver=Ma57Solver,
+    linear_solver=MadNLPGPU.CUDSSSolver,
+    cudss_algorithm=MadNLP.LDL,
+    cudss_pivot_epsilon=1e-10,
     richardson_tol=1e-12,
     richardson_max_iter=20,
-    ma57_pivtol=0.0,
-    ma57_automatic_scaling=true,
     max_iter=500,
     kkt_system=MadNCL.K2rAuglagKKTSystem,
 )
-writedlm(joinpath(@__DIR__, "..", "results", "scopf-madncl-k2r-ma57-scaling.csv"), results)
+writedlm(joinpath(@__DIR__, "..", "results", "scopf-madncl-k2r-cudss.csv"), results)
 
 

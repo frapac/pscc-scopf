@@ -47,6 +47,6 @@ function benchmark_knitro()
 end
 
 results = benchmark_knitro()
-writedlm("results/scopf-knitro.csv", results)
+writedlm(joinpath(@__DIR__, "..", "results", "scopf-knitro.csv"), results)
 
 

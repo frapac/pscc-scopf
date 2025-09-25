@@ -52,6 +52,8 @@ function update!(lpec::LPEC, nlp::AbstractNLPModel, x)
     NLPModels.cons!(nlp, x, lpec.c)
     NLPModels.grad!(nlp, x, lpec.g)
     NLPModels.jac_coord!(nlp, x, lpec.Jx)
+    # Clamp solution between bounds to ensure we are feasible
+    lpec.c .= clamp.(lpec.c, lpec.lcon, lpec.ucon)
     return
 end
 

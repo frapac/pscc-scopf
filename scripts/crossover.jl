@@ -58,7 +58,7 @@ function update!(lpec::LPEC, nlp::AbstractNLPModel, x)
     return
 end
 
-function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2; solver=:gurobi)
+function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2; solver=:highs)
     ind_cc1, ind_cc2 = lpcc.ind_cc1, lpcc.ind_cc2
     J = sparse(lpcc.Ji, lpcc.Jj, lpcc.Jx, lpcc.m, lpcc.n)
     n = lpcc.n

@@ -12,7 +12,7 @@ include(joinpath(@__DIR__, "..", "models", "scopf.jl"))
 include(joinpath(@__DIR__, "..", "scripts", "utils.jl"))
 include(joinpath(@__DIR__, "..", "scripts", "crossover.jl"))
 DATA_DIR = ENV["MATPOWER_DIR"]
-case = "case300"
+case = "case14"
 nK = 8
 screen = readdlm("data/screening/$(case).txt")
 contingencies = findall(screen[:, 4] .== 0)[1:nK]
@@ -84,4 +84,4 @@ c = cons(nlp, x)
 #     end
 # end
 
-mpecopt!(nlp, ind_cc1, ind_cc2, x; tol=1e-6, tr_radius=1e-3, max_iter=10)
+mpecopt!(nlp, ind_cc1, ind_cc2, x; tol=1e-6, tr_radius=1e-4, max_iter=10)

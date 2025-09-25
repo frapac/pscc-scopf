@@ -7,21 +7,7 @@ using ExaModels
 
 include(joinpath(@__DIR__, "..", "models", "scopf.jl"))
 include(joinpath(@__DIR__, "..", "data", "contingencies.jl"))
-
-DATA_DIR = ENV["MATPOWER_DIR"]
-
-CASES = [
-    ("case118", 100),
-    ("case300", 100),
-    ("case_ACTIVSg200", 100),
-    ("case_ACTIVSg500", 100),
-    ("case1354pegase", 8),
-    ("case1354pegase", 16),
-    ("case1354pegase", 32),
-    ("case_ACTIVSg2000", 8),
-    ("case2869pegase", 8),
-    ("case2869pegase", 16),
-]
+include(joinpath(@__DIR__, "common.jl"))
 
 
 function benchmark_scopf(; options...)

@@ -13,7 +13,7 @@ include(joinpath(@__DIR__, "..", "scripts", "utils.jl"))
 include(joinpath(@__DIR__, "..", "scripts", "crossover.jl"))
 DATA_DIR = ENV["MATPOWER_DIR"]
 case = "case14"
-nK = 8
+nK = 6
 screen = readdlm("data/screening/$(case).txt")
 contingencies = findall(screen[:, 4] .== 0)[1:nK]
 
@@ -84,4 +84,17 @@ c = cons(nlp, x)
 #     end
 # end
 
-mpecopt!(nlp, ind_cc1, ind_cc2, x; tol=1e-6, tr_radius=1e-4, max_iter=10)
+# calculate necessary tr.
+inf_c = mapreduce((lc, c_, uc) -> max(c_-uc, lc-c_, 0), max, nlp.meta.lcon, c, nlp.meta.ucon; init=0.0)
+inf_x = mapreduce((lx, x_, ux) -> max(x_-ux, lx-x_, 0), max, nlp.meta.lvar, x, nlp.meta.uvar; init=0.0)
+inf_cc = mapreduce((x1, x2, lx1, lx2) -> max(min(x1-lx1, x2-lx2), 0), max,
+                   x[ind_cc1], x[ind_cc2], nlp.meta.lvar[ind_cc1], nlp.meta.lvar[ind_cc2];
+                   init = 0.0)
+println("inf_cc: $(inf_cc), inf_c: $(inf_c), inf_x: $(inf_x)")
+
+# inf factor
+inf_factor = 10.0
+rho_min = inf_factor*max(inf_x, inf_cc, inf_c)
+println("rho_min = $(rho_min)")
+
+mpecopt!(nlp, ind_cc1, ind_cc2, x; tol=1e-6, tr_radius=rho_min, max_iter=10)

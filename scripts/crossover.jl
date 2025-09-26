@@ -170,7 +170,7 @@ function solve_branch_nlp!(lpcc, nlp, partition)
     for k in 1:lpcc.n_cc
         i1, i2 = ind_cc1[k], ind_cc2[k]
         # manual upper bound relax
-        ubound_relax_factor = 1e8
+        ubound_relax_factor = 0.0
         if partition[k] == 1 # belong to I1
             #print("Pushing x[$(i1)] by $(nlp.meta.x0[i1] - nlp.meta.lvar[i1])")
             nlp.meta.x0[i1] = nlp.meta.lvar[i1]
@@ -189,11 +189,12 @@ function solve_branch_nlp!(lpcc, nlp, partition)
         end
     end
     # Call MadNLP
-    return madnlp(nlp; linear_solver=Ma27Solver, print_level=MadNLP.INFO, bound_relax_factor=1e-9, max_iter=10000)
+    return madnlp(nlp; linear_solver=Ma57Solver, print_level=MadNLP.INFO, bound_push=1e-6, bound_fac=1e-6, bound_relax_factor=0.0, max_iter=10000, mu_init=1e-1)
 end
 
 function mpecopt!(
     nlp,
+    bnlp,
     ind_cc1,
     ind_cc2,
     x;
@@ -204,7 +205,7 @@ function mpecopt!(
     tr_0 = 1e-3,
     tr_min = 1e-7,
 )
-    lpcc = build_lpec(nlp, ind_cc1, ind_cc2)
+    lpcc = build_lpec(bnlp, ind_cc1, ind_cc2)
     current_objective = Inf#NLPModels.obj(nlp, x)
 
     status = MadNLP.INITIAL
@@ -214,7 +215,7 @@ function mpecopt!(
     bnlp_feasible = false
     for i in 1:max_iter
         step_type = ""
-        update!(lpcc, nlp, x)
+        update!(lpcc, bnlp, x)
         # Solve LPCC
         (d, partition) = solve_lpec!(lpcc, x, tr_radius, initialize=bnlp_feasible)
         #println(norm(d,Inf))
@@ -230,15 +231,15 @@ function mpecopt!(
             break
         end
         # Solve branch NLP
-        nlp.meta.x0 .= x
-        results = solve_branch_nlp!(lpcc, nlp, partition)
+        bnlp.meta.x0 .= x
+        results = solve_branch_nlp!(lpcc, bnlp, partition)
 
         x_trial = results.solution
-        c = cons(nlp, x_trial)
-        inf_c = mapreduce((lc, c_, uc) -> max(c_-uc, lc-c_, 0), max, nlp.meta.lcon, c, nlp.meta.ucon; init=0.0)
+        c = cons(bnlp, x_trial)
+        inf_c = mapreduce((lc, c_, uc) -> max(c_-uc, lc-c_, 0), max, bnlp.meta.lcon, c, bnlp.meta.ucon; init=0.0)
         inf_x = mapreduce((lx, x_, ux) -> max(x_-ux, lx-x_, 0), max, lpcc.lvar, x_trial, lpcc.uvar; init=0.0)
         inf_cc = mapreduce((x1, x2, lx1, lx2) -> max(min(x1-lx1, x2-lx2), 0), max,
-                           x_trial[ind_cc1], x_trial[ind_cc2], nlp.meta.lvar[ind_cc1], nlp.meta.lvar[ind_cc2];
+                           x_trial[ind_cc1], x_trial[ind_cc2], bnlp.meta.lvar[ind_cc1], bnlp.meta.lvar[ind_cc2];
                            init = 0.0)
         # Update parameters
         if results.status == MadNLP.SOLVE_SUCCEEDED
@@ -260,7 +261,7 @@ function mpecopt!(
                 i, current_objective, norm(d, Inf), tr_radius,
                 inf_c, inf_x, inf_cc, step_type)
     end
-    nlp.meta.lvar .= lpcc.lvar
-    nlp.meta.uvar .= lpcc.uvar
+    bnlp.meta.lvar .= lpcc.lvar
+    bnlp.meta.uvar .= lpcc.uvar
     return status, x
 end

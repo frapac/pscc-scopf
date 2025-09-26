@@ -99,6 +99,8 @@ function parse_ccons!(model; reformulation=:mpec)
             func = MOI.ScalarQuadraticFunction(quad_terms, MOI.ScalarAffineTerm{Float64}[], 0.0)
             MOI.add_constraint(moimodel, func, MOI.LessThan(0.0))
         end
+    elseif reformulation == :bnlp
+        # do nothing
     end
     return ind_cc1, ind_cc2
 end

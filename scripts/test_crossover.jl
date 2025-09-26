@@ -13,7 +13,7 @@ include(joinpath(@__DIR__, "..", "scripts", "utils.jl"))
 include(joinpath(@__DIR__, "..", "scripts", "crossover.jl"))
 DATA_DIR = ENV["MATPOWER_DIR"]
 case = "case118"
-nK = 10
+nK = 8
 screen = readdlm("data/screening/$(case).txt")
 contingencies = findall(screen[:, 4] .== 0)[1:nK]
 
@@ -58,6 +58,18 @@ stats = @time MadNCL.madncl(
 ###
 # Step 2: run crossover
 ###
+# Build JuMP model
+bnlp_model = scopf_model(
+    joinpath(DATA_DIR, "$(case).m"),
+    contingencies;
+    adjust=:mpecdroop,
+    voltage_control=:pvpq,
+    load_factor=1.0,
+)
+# Reformulate complementarity constraints inside JuMP
+ind_cc1, ind_cc2 = parse_ccons!(bnlp_model; reformulation=:bnlp)
+# Convert to ExaModels for fast evaluation
+bnlp = ExaModels.ExaModel(model)
 
 x = copy(stats.solution)
 
@@ -95,8 +107,8 @@ println("inf_cc: $(inf_cc), inf_c: $(inf_c), inf_x: $(inf_x)")
 println("obj: $(stats.objective)")
 
 # inf factor
-inf_factor = 10.0
+inf_factor = 5.01
 rho_min = inf_factor*max(inf_x, inf_cc, inf_c)
 println("rho_min = $(rho_min)")
 
-mpecopt!(nlp, ind_cc1, ind_cc2, x; tol=1e-6, tr_radius=rho_min, max_iter=10)
+mpecopt!(nlp, bnlp, ind_cc1, ind_cc2, x; tol=1e-6, tr_radius=rho_min, max_iter=10)

@@ -63,11 +63,11 @@ function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2; solver=:gurobi, initia
     J = sparse(lpcc.Ji, lpcc.Jj, lpcc.Jx, lpcc.m, lpcc.n)
     n = lpcc.n
     n0 = length(I0)
-    M = 100.0
+    M = 1000.0
     if solver == :gurobi
         model = Model(Gurobi.Optimizer)
-        JuMP.set_optimizer_attribute(model, "FeasibilityTol", 1e-6)
-        JuMP.set_optimizer_attribute(model, "IntFeasTol", 1e-6)
+        JuMP.set_optimizer_attribute(model, "FeasibilityTol", 1e-8)
+        JuMP.set_optimizer_attribute(model, "IntFeasTol", 1e-8)
         JuMP.set_optimizer_attribute(model, "OptimalityTol", 1e-6)
         JuMP.set_optimizer_attribute(model, "MIPGap", 1e-4)
         JuMP.set_optimizer_attribute(model, "MIPGapAbs", 1e-9)
@@ -170,7 +170,7 @@ function solve_branch_nlp!(lpcc, nlp, partition)
     for k in 1:lpcc.n_cc
         i1, i2 = ind_cc1[k], ind_cc2[k]
         # manual upper bound relax
-        ubound_relax_factor = 0.0
+        ubound_relax_factor = 1e-7
         if partition[k] == 1 # belong to I1
             #print("Pushing x[$(i1)] by $(nlp.meta.x0[i1] - nlp.meta.lvar[i1])")
             nlp.meta.x0[i1] = nlp.meta.lvar[i1]
@@ -218,7 +218,7 @@ function mpecopt!(
         update!(lpcc, bnlp, x)
         # Solve LPCC
         (d, partition) = solve_lpec!(lpcc, x, tr_radius, initialize=bnlp_feasible)
-        #println(norm(d,Inf))
+        println(norm(d,Inf))
         if bnlp_feasible && norm(d, Inf) <= tol
             status = MadNLP.SOLVE_SUCCEEDED
             break

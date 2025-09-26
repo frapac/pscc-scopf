@@ -12,7 +12,7 @@ include(joinpath(@__DIR__, "..", "models", "scopf.jl"))
 include(joinpath(@__DIR__, "..", "scripts", "utils.jl"))
 include(joinpath(@__DIR__, "..", "scripts", "crossover.jl"))
 DATA_DIR = ENV["MATPOWER_DIR"]
-case = "case118"
+case = "case14"
 nK = 8
 screen = readdlm("data/screening/$(case).txt")
 contingencies = findall(screen[:, 4] .== 0)[1:nK]
@@ -107,7 +107,7 @@ println("inf_cc: $(inf_cc), inf_c: $(inf_c), inf_x: $(inf_x)")
 println("obj: $(stats.objective)")
 
 # inf factor
-inf_factor = 5.01
+inf_factor = 100.01
 rho_min = inf_factor*max(inf_x, inf_cc, inf_c)
 println("rho_min = $(rho_min)")
 

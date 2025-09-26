@@ -58,12 +58,12 @@ function update!(lpec::LPEC, nlp::AbstractNLPModel, x)
     return
 end
 
-function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2; solver=:highs)
+function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2; solver=:gurobi, initialize=false)
     ind_cc1, ind_cc2 = lpcc.ind_cc1, lpcc.ind_cc2
     J = sparse(lpcc.Ji, lpcc.Jj, lpcc.Jx, lpcc.m, lpcc.n)
     n = lpcc.n
     n0 = length(I0)
-    M = 1000.0
+    M = 100.0
     if solver == :gurobi
         model = Model(Gurobi.Optimizer)
         JuMP.set_optimizer_attribute(model, "FeasibilityTol", 1e-6)
@@ -81,11 +81,15 @@ function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2; solver=:highs)
         JuMP.set_optimizer_attribute(model, "mip_rel_gap", 1e-4)
         JuMP.set_optimizer_attribute(model, "mip_abs_gap", 1e-9)
         JuMP.set_optimizer_attribute(model, "presolve", "on")
+        JuMP.set_optimizer_attribute(model, "mip_heuristic_effort", 0.0)
+        #JuMP.set_optimizer_attribute(model, "solver", "ipm")
+        #JuMP.set_optimizer_attribute(model, "parallel", "on")
         JuMP.set_attribute(model, HiGHS.ComputeInfeasibilityCertificate(), false)
     end
-    JuMP.set_silent(model)
+    #JuMP.set_silent(model)
     @variable(model, -rho <= d[1:lpcc.n] <= rho)
     @variable(model, y[1:n0], Bin)
+    #@variable(model, 0<= y[1:n0] <= 1)
     @objective(model, Min, dot(lpcc.g, d))
     # Bound constraints
     @constraint(model, lpcc.lvar .<= x .+ d .<= lpcc.uvar)
@@ -103,8 +107,10 @@ function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2; solver=:highs)
     @constraint(model, [i in 1:n0], x[ind_cc1[I0[i]]] + d[ind_cc1[I0[i]]] - lpcc.lvar[ind_cc1[i]] <= M * y[i])
     @constraint(model, [i in 1:n0], x[ind_cc2[I0[i]]] + d[ind_cc2[I0[i]]] - lpcc.lvar[ind_cc2[i]] <= M * (1.0 - y[i]))
 
-    set_start_value.(d[1:lpcc.n], 0.0)
-    #set_start_value.(y[1:n0], 0.0)
+    if initialize
+        set_start_value.(d[1:lpcc.n], 0.0)
+        set_start_value.(y[1:n0], 0.0)
+    end
 
     return model
 end
@@ -130,16 +136,17 @@ function find_partition(lpcc::LPEC, x, tol)
     return partition
 end
 
-function solve_lpec!(lpcc::LPEC, x, rho)
+function solve_lpec!(lpcc::LPEC, x, rho; initialize=false)
     partition = find_partition(lpcc, x, rho)
     I0 = findall(isequal(0), partition)
     I1 = findall(isequal(1), partition)
     I2 = findall(isequal(2), partition)
+    println("I0 cnt: $(length(I0))")
     if isempty(I0)
         # I0 is empty, therefore partition is good enough already
         return zeros(Float64, lpcc.n), partition
     end
-    model = build_lpec_model(lpcc, x, rho, I0, I1, I2)
+    model = build_lpec_model(lpcc, x, rho, I0, I1, I2; initialize=initialize)
     JuMP.optimize!(model)
     # Get descent direction
     d = JuMP.value.(model[:d])
@@ -162,10 +169,12 @@ function solve_branch_nlp!(lpcc, nlp, partition)
     # Freeze variables to build branch NLP.
     for k in 1:lpcc.n_cc
         i1, i2 = ind_cc1[k], ind_cc2[k]
+        # manual upper bound relax
+        ubound_relax_factor = 1e8
         if partition[k] == 1 # belong to I1
             #print("Pushing x[$(i1)] by $(nlp.meta.x0[i1] - nlp.meta.lvar[i1])")
             nlp.meta.x0[i1] = nlp.meta.lvar[i1]
-            nlp.meta.uvar[i1] = nlp.meta.lvar[i1]
+            nlp.meta.uvar[i1] = nlp.meta.lvar[i1] + ubound_relax_factor
 
             #println(" And x[$(i2)] upper bound is $(lpcc.uvar[i2])")
             nlp.meta.uvar[i2] = lpcc.uvar[i2]
@@ -174,14 +183,13 @@ function solve_branch_nlp!(lpcc, nlp, partition)
 
             #print("Pushing x[$(i2)] by $(nlp.meta.x0[i2] - nlp.meta.lvar[i2])")
             nlp.meta.x0[i2] = nlp.meta.lvar[i2]
-            nlp.meta.uvar[i2] = nlp.meta.lvar[i2]
+            nlp.meta.uvar[i2] = nlp.meta.lvar[i2] + ubound_relax_factor
 
             #println(" and x[$(i1)] upper bound is $(lpcc.uvar[i1])")
         end
     end
     # Call MadNLP
-    return madnlp(nlp; linear_solver=Ma27Solver, print_level=MadNLP.ERROR,
-                  bound_push=1e-6, bound_fac=1e-6, bound_relax_factor=0.0)
+    return madnlp(nlp; linear_solver=Ma27Solver, print_level=MadNLP.INFO, bound_relax_factor=1e-9, max_iter=10000)
 end
 
 function mpecopt!(
@@ -193,20 +201,22 @@ function mpecopt!(
     max_iter=10,
     tr_alpha = 0.1,
     tr_radius = 1e-3,
+    tr_0 = 1e-3,
     tr_min = 1e-7,
 )
     lpcc = build_lpec(nlp, ind_cc1, ind_cc2)
-    current_objective = NLPModels.obj(nlp, x)
+    current_objective = Inf#NLPModels.obj(nlp, x)
 
     status = MadNLP.INITIAL
 
+    d = zeros(Float64, lpcc.n)
     println("Starting crossover method using MPECopt.")
     bnlp_feasible = false
-
     for i in 1:max_iter
+        step_type = ""
         update!(lpcc, nlp, x)
         # Solve LPCC
-        (d, partition) = solve_lpec!(lpcc, x, tr_radius)
+        (d, partition) = solve_lpec!(lpcc, x, tr_radius, initialize=bnlp_feasible)
         #println(norm(d,Inf))
         if bnlp_feasible && norm(d, Inf) <= tol
             status = MadNLP.SOLVE_SUCCEEDED
@@ -230,27 +240,26 @@ function mpecopt!(
         inf_cc = mapreduce((x1, x2, lx1, lx2) -> max(min(x1-lx1, x2-lx2), 0), max,
                            x_trial[ind_cc1], x_trial[ind_cc2], nlp.meta.lvar[ind_cc1], nlp.meta.lvar[ind_cc2];
                            init = 0.0)
-
-        @printf("%3i %10.7e %5.2e %5.2e %7.4e %7.4e %7.4e\n",
-                i, current_objective, norm(d, Inf), tr_radius,
-                inf_c, inf_x, inf_cc)
         # Update parameters
         if results.status == MadNLP.SOLVE_SUCCEEDED
             bnlp_feasible = true
             if results.objective < current_objective
                 current_objective = results.objective
+                step_type = "fi"
+                tr_radius = tr_0 # reset to phaseII trust radius
             else
+                step_type = "fn"
                 tr_radius *= tr_alpha
             end
-            x .= results.solution # Update solution since the BNLP succeeded.
+            x .= x_trial # Update solution since the BNLP succeeded.
         else
+            step_type = "I"
             tr_radius *= tr_alpha
         end
-        println("inf_cc: $(inf_cc), inf_c: $(inf_c), inf_x: $(inf_x)")
-
-
+        @printf("%3i %10.7e %5.2e %5.2e %7.4e %7.4e %7.4e %s\n",
+                i, current_objective, norm(d, Inf), tr_radius,
+                inf_c, inf_x, inf_cc, step_type)
     end
-
     nlp.meta.lvar .= lpcc.lvar
     nlp.meta.uvar .= lpcc.uvar
     return status, x

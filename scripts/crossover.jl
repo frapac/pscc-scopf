@@ -58,7 +58,7 @@ function update!(lpec::LPEC, nlp::AbstractNLPModel, x)
     return
 end
 
-function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2; solver=:gurobi, initialize=false)
+function build_lpec_model(lpcc::LPEC, x, rho, I0, I1, I2; solver=:highs, initialize=false)
     ind_cc1, ind_cc2 = lpcc.ind_cc1, lpcc.ind_cc2
     J = sparse(lpcc.Ji, lpcc.Jj, lpcc.Jx, lpcc.m, lpcc.n)
     n = lpcc.n
@@ -164,26 +164,27 @@ function solve_lpec!(lpcc::LPEC, x, rho; initialize=false)
     return d, partition
 end
 
-function solve_branch_nlp!(lpcc, nlp, partition)
+function solve_branch_nlp!(lpcc, bnlp, partition)
     ind_cc1, ind_cc2 = lpcc.ind_cc1, lpcc.ind_cc2
     # Freeze variables to build branch NLP.
     for k in 1:lpcc.n_cc
         i1, i2 = ind_cc1[k], ind_cc2[k]
         # manual upper bound relax
-        ubound_relax_factor = 1e-7
+        #ubound_relax_factor = 1e-8
+        ubound_relax_factor = 0.0
         if partition[k] == 1 # belong to I1
-            #print("Pushing x[$(i1)] by $(nlp.meta.x0[i1] - nlp.meta.lvar[i1])")
-            nlp.meta.x0[i1] = nlp.meta.lvar[i1]
-            nlp.meta.uvar[i1] = nlp.meta.lvar[i1] + ubound_relax_factor
+            #print("Pushing x[$(i1)] by $(bnlp.meta.x0[i1] - bnlp.meta.lvar[i1])")
+            bnlp.meta.x0[i1] = bnlp.meta.lvar[i1]
+            bnlp.meta.uvar[i1] = bnlp.meta.lvar[i1] + ubound_relax_factor
 
             #println(" And x[$(i2)] upper bound is $(lpcc.uvar[i2])")
-            nlp.meta.uvar[i2] = lpcc.uvar[i2]
+            bnlp.meta.uvar[i2] = lpcc.uvar[i2]
         else                 # belong to I2
-            nlp.meta.uvar[i1] = lpcc.uvar[i1]
+            bnlp.meta.uvar[i1] = lpcc.uvar[i1]
 
-            #print("Pushing x[$(i2)] by $(nlp.meta.x0[i2] - nlp.meta.lvar[i2])")
-            nlp.meta.x0[i2] = nlp.meta.lvar[i2]
-            nlp.meta.uvar[i2] = nlp.meta.lvar[i2] + ubound_relax_factor
+            #print("Pushing x[$(i2)] by $(bnlp.meta.x0[i2] - bnlp.meta.lvar[i2])")
+            bnlp.meta.x0[i2] = bnlp.meta.lvar[i2]
+            bnlp.meta.uvar[i2] = bnlp.meta.lvar[i2] + ubound_relax_factor
 
             #println(" and x[$(i1)] upper bound is $(lpcc.uvar[i1])")
         end

@@ -59,17 +59,17 @@ stats = @time MadNCL.madncl(
 # Step 2: run crossover
 ###
 # Build JuMP model
-bnlp_model = scopf_model(
-    joinpath(DATA_DIR, "$(case).m"),
+bnlp_model  = scopf_model(
+   joinpath(DATA_DIR, "$(case).m"),
     contingencies;
     adjust=:mpecdroop,
     voltage_control=:pvpq,
     load_factor=1.0,
 )
-# Reformulate complementarity constraints inside JuMP
-ind_cc1, ind_cc2 = parse_ccons!(bnlp_model; reformulation=:bnlp)
+# Reformulate into BNLP inside JuMP
+ind_cc1, ind_cc2 = parse_ccons!(bnlp_model; reformulation=:branch)
 # Convert to ExaModels for fast evaluation
-bnlp = ExaModels.ExaModel(model)
+bnlp = ExaModels.ExaModel(bnlp_model)
 
 x = copy(stats.solution)
 

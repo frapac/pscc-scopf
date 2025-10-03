@@ -88,9 +88,9 @@ function contingency_problem(file_name, base_case, contingency; load_factor=1.0,
         end
         if isfinite(qmin)
             if use_mpec
-                @constraint(model, vp[g] * (qg[g] - qmin) <= 0.0)
-            else
                 @constraint(model, [(qg[g] - qmin), vp[g]] in MOI.Complements(2))
+            else
+                @constraint(model, vp[g] * (qg[g] - qmin) <= 0.0)
             end
         end
     end

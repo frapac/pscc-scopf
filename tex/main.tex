@@ -384,13 +384,13 @@ However, solving the AC-SCOPF with the original nonlinear formulation remains an
 and was the main motivation behind the GO competition recently orchestrated by the FERC~\cite{aravena2023recent}.
 The issue with the nonlinear formulation is two-fold. First, the AC-SCOPF writes as a huge-scale
 nonlinear program, whose size is beyond the capacity of state-of-the-art nonlinear optimization solvers
-like Ipopt or Knitro~\cite{capitanescu2011state}. Second, when incorporating recourses in the post-contingency state, the AC-SCOPF has to encode a set of logical conditions modelling the
+like Ipopt or Knitro~\cite{capitanescu2011state}. Second, when incorporating recourse in the post-contingency state, the AC-SCOPF has to encode a set of logical conditions modeling the
 droop control and the PV/PQ switches.
 We can handle the logical conditions by introducing binary variables, at the
 price of obtaining a mixed-integer nonlinear program (MINLP) whose size becomes quickly intractable.
 Alternatively, the logical conditions can be formulated using complementarity constraints~\cite{baumrucker2008mpec},
 easier to handle in the large-scale regime. Complementarity constraints have been adopted early
-on in power system computation, both for power flow~\cite{kim2022mixed,zhao2008pv,sundaresh2014modified,murray2015robust} and for optimal power flow~\cite{rosehart2005optimal}.
+on in power system computation, both for power flow~\cite{zhao2008pv,sundaresh2014modified,murray2015robust} and for optimal power flow~\cite{rosehart2005optimal}.
 This second method has been adopted by some
 of the leading teams during the GO competition, as it integrates neatly with interior-point solvers
 \cite{curtis2023decomposition,gholami2023admm,petra2023surrogate}.
@@ -422,11 +422,14 @@ the solution of large-scale optimal power flow (OPF) on the GPU with MadNLP~\cit
 In this work, we analyze the performance of MadNCL on large-scale AC-SCOPF instances. In particular,
 \begin{itemize}
   \item We present how MadNCL can perform the contingency screening and the solution
-    of the AC-SCOPF.
-  \item We show how the algorithm is implemented on the GPU, from the evaluation
+    of the corrective AC-SCOPF.
+    To the best of our knowledge,
+    this is the first time an Augmented Lagrangian-based algorithm is used to solve the corrective SCOPF formulated with complementarity constraints.
+  \item We show that MadNCL can accommodate well the complementarity constraints in the problem.
+    The algorithm is also effective at detecting infeasible problems, a useful feature for contingency screening.
+  \item We detail the GPU implementation of MadNCL, from the evaluation
     of the derivatives with ExaModels~\cite{shin2024accelerating} to the solution of the Newton systems with NVIDIA cuDSS.
-  \item We assess the speed-up we obtain by running MadNCL on the GPU,
-    and gives a comparison with Artelys Knitro~\cite{waltz2006interior}, a state-of-the-art optimization
+    We compare MadNCL with Artelys Knitro~\cite{waltz2006interior}, a state-of-the-art optimization
     solver that also supports the solution of MPCCs~\cite{leyffer2006interior}.
 \end{itemize}
 
@@ -481,17 +484,16 @@ for $\nu_-^k \geq 0$ and $\nu_+^k \geq 0$,
     & 0 \leq \nu_{+}^k \perp q_g^k - \underline{q}_g \geq 0 \; .
   \end{aligned}
 \end{equation}
-As a result, the corrective SCOPF modeling the recourses with \eqref{eq:droopmpec}
+As a result, the corrective SCOPF modeling the recourse with \eqref{eq:droopmpec}
 and \eqref{eq:pvpq} writes as a nonlinear program with complementarity
 constraints. We note that the MPCC formulation has been adopted throughout the GO
-competition, and is described in length in \cite{aravena2023recent,curtis2023decomposition,gholami2023admm},
-with various methods used to handle the complementarity constraints \eqref{eq:droopmpec} and \eqref{eq:pvpq}.
+competition, and is described in length in \cite{aravena2023recent,curtis2023decomposition,gholami2023admm}.
 
 \subsection{AC-SCOPF}
 We adapt the formulation of the AC-SCOPF used in \cite{frank2016introduction} to include the complementarity
 constraints modeling the AGC~\eqref{eq:droopmpec} and the PV/QP switches~\eqref{eq:pvpq}.
-We note $u_0 = (p_g^0, v_{m,pv}^0)$ and $x_0 = (v_a^0, v_{m,pq}^0, q_g^0)$ the control and the state in the base case,
-and $u_k = (p_g^k, v_{m,pv}^k)$ and $x^k = (v_a^k, v_{m,pq}^k, q_g^k, \Delta^k, \pi_g^k, \nu^k)$
+We note $u_0 = (p_g^0, v_{m,PV}^0)$ and $x_0 = (v_a^0, v_{m,PQ}^0, q_g^0)$ the control and the state in the base case,
+and $u_k = (p_g^k, v_{m,PV}^k)$ and $x^k = (v_a^k, v_{m,PQ}^k, q_g^k, \Delta^k, \pi_g^k, \nu^k)$
 the control and the state in the contingency $k$. We define the AC-SCOPF problem as:
 \begin{equation}
   \label{eq:scopf}
@@ -504,16 +506,16 @@ the control and the state in the contingency $k$. We define the AC-SCOPF problem
   \end{aligned}
 \end{equation}
 where $f(\cdot)$ is the objective in the base case scenario,
-$g(\cdot)$ encodes the power-flow constraints, $h(\cdot)$ the operational
+$g_k(\cdot)$ encodes the power-flow constraints, $h_k(\cdot)$ the operational
 constraints (line-flow and operational bounds) and $G(\cdot)$ and
 $H(\cdot)$ are two functions encoding the coupling between the base-case
-and the contingency, here expressed with the complementarity constraints
+and the contingency $k$, here expressed with the complementarity constraints
 \eqref{eq:droopmpec} and \eqref{eq:pvpq}.
-On the contrary to \cite{curtis2023decomposition}, we do not add any slack variables
-penalized in the objective to ensure feasibility, as this will be handled latter by Algorithm NCL.
-Note that the only coupling between the base case and the contingencies
-appears in the complementarity conditions.
+On the contrary to \cite{curtis2023decomposition}, we do relax the problem
+to ensure feasibility, as this will be handled latter by Algorithm NCL.
 
+Note that the only coupling between the base case and the contingencies
+appears through the complementarity conditions~\eqref{eq:droopmpec}-\eqref{eq:pvpq}.
 For a given base-case control $u_0$, the contingency $k$ is feasible if there is a solution
 $(x_k, u_k)$ to the nonlinear system with complementarity constraints:
 \begin{equation}
@@ -614,7 +616,7 @@ multipliers $(\lambda, \mu) \in \mathbb{R}^m \times \mathbb{R}^{2p}$ such that
 Every $w \in \Omega$ satisfying strong stationarity satisfies Bouligand stationarity~\cite{scheel2000mathematical}.
 We note that the conditions
 \eqref{eq:strongstationarity} encodes the KKT stationary solution of a regular nonlinear program.
-We say that MPCC-LICQ holds at $x \in \Omega$ if this regular nonlinear program satisfies LICQ.
+We say that MPCC-LICQ holds at $x \in \Omega$ if this regular nonlinear program itself satisfies LICQ.
 Our goal is to find a strong stationary solution for \eqref{eq:mpcc}.
 
 
@@ -628,7 +630,7 @@ is reformulated as $W_1 W_2 e \leq t$. We obtain the so-called Scholtes
 relaxation~\cite{scholtes2001convergence}: by driving the term $t$ to $0$ we recover the solution of the original MPCC~\eqref{eq:mpcc}.
 This is the method implemented in Ipopt-C~\cite{raghunathan2005interior}.
 \emph{Penalty-based methods} use a $\ell_1$-exact penalty to penalize the complementarity
-constraints in the objective by adding a term $\tau w_1^\top w_2$, with a penalization $\tau >0$ large-enough.
+constraints in the objective by adding a term $\tau w_1^\top w_2$, with a large-enough penalty $\tau >0$.
 Assuming MPCC-LICQ, the $\ell_1$-exact penalty method converges to a strong-stationary solution $x \in \Omega$.
 This is the method used in the solver Knitro~\cite{leyffer2006interior}.
 In the next section, we interpret Algorithm NCL as a mix of regularization and penalty-based methods.
@@ -638,17 +640,13 @@ In this section, we present Algorithm NCL.
 NCL solves the problem~\eqref{eq:mpccnlp} using an Augmented Lagrangian method.
 NCL is strictly equivalent to the classical Augmented Lagrangian method,
 but uses a nonlinearly constrained formulation in the subproblems.
-When solving the MPCC~\eqref{eq:mpcc}, it has been proven that the augmented Lagrangian
+When solving the MPCC~\eqref{eq:mpcc}, it has been proven in \cite{izmailov2012global} that the augmented Lagrangian
 method converges to a strongly stationary solution $x \in \Omega$ if MPCC-LICQ holds at $x$
 and the sequence of multiplier estimates $\{\nu_0^n\}_n$ generated by the algorithm
-has a bounded subsequence (this prevents the algorithm to converge to a spurious solution)
-\cite{izmailov2012global}.
+has a bounded subsequence (this prevents the algorithm to converge to a spurious solution).
 
 \subsection{Algorithm NCL}
-The subproblems obtained in a classical Augmented Lagrangian method are nonlinear programs
-with bound constraints (or with complementarity constraints in the variant XX),
-and are easy to solve with projected gradient or projected Newton methods.
-Instead, at each outer iteration $n$, NCL solves the nonlinearly constrained subproblem:
+At each outer iteration $n$, NCL solves the nonlinearly constrained subproblem:
 \begin{equation}
   \label{eq:nclsubpb}
   \begin{aligned}
@@ -660,8 +658,8 @@ Instead, at each outer iteration $n$, NCL solves the nonlinearly constrained sub
 with
 \begin{equation}
   \begin{aligned}
-    \mathcal{L}_\rho(w, r, t, \lambda^{(n)}, \nu^{(n)}_0) = \phi(w) +& (\lambda^{(n)})^\top r
-    + (\nu_0^{(n)})^\top t + \\ & \frac{\rho^{(n)}}{2}(\|r \|^2 + \|t\|^2) \; ,
+    \mathcal{L}_\rho(w, r, t, \lambda^{(n)}, \nu^{(n)}_0) =  \\
+    \phi(w) + (\lambda^{(n)})^\top r & + (\nu_0^{(n)})^\top t +  \frac{\rho^{(n)}}{2}(\|r \|^2 + \|t\|^2) \; ,
   \end{aligned}
 \end{equation}
 with $(r, t) \in \mathbb{R}^m \times \mathbb{R}^p$ two regularization variables and
@@ -673,15 +671,15 @@ apply any special treatment to the complementarity constraints.
 \paragraph{Inner iterations}
 At a given outer iteration $n$, NCL solves the subproblem \eqref{eq:nclsubpb}
 with an interior-point method (IPM), up to a given tolerance $\omega^{(n)}$.
-Only the objective changes between two successive outer iterations, hence the IPM used to solve
-\eqref{eq:nclsubpb} can be efficiently warmstarted from the previous primal-dual solution.
+Only the objective changes between two successive outer iterations, hence the IPM
+can be efficiently warmstarted from the previous primal-dual solution.
 An extrapolation step can be used to skip the inner iterations once we are close to a
 stationary solution, allowing the algorithm to recover a superlinear convergence rate \cite{montoison2025madncl}.
 
 \paragraph{Outer iterations}
 Once the subproblem~\eqref{eq:nclsubpb} solved, we update the augmented Lagrangian
 parameters using the solution $(x^{n+1}, r^{n+1}, t^{n+1})$
-and proceed to the outer iteration. For a given forcing sequence $\{\eta^{(n)}\}_n$, NCL uses the classical updates:
+and proceed to the next outer iteration. For a given forcing sequence $\{\eta^{(n)}\}_n$, NCL uses the classical updates:
 \begin{itemize}
   \item If $\|(r^{(n+1)}, t^{(n+1)})\|_\infty \leq \eta^{(n)}$, then
     \begin{equation*}
@@ -711,8 +709,8 @@ If the problem is infeasible, NCL converges to a stationary solution of the \emp
 By checking the respective values in the regularization variables $r$ and $t$,
 we can quickly assess which contingencies and constraints are rendering the SCOPF problem~\eqref{eq:scopf} infeasible.
 On the contrary to the formulation used by the GO-competition~\cite{aravena2023recent}, we do not
-have to penalize the constraint violation in the objective using a $\ell_1$ penalty: the augmented
-Lagrangian algorithm is penalizing the constraint violation directly for us.
+have to penalize the constraint violation in the objective using a $\ell_1$ penalty, as the augmented
+Lagrangian algorithm is doing that automatically.
 
 \subsection{Newton systems}
 The KKT stationary conditions for the subproblem~\eqref{eq:nclsubpb} are:
@@ -730,7 +728,7 @@ The KKT stationary conditions for the subproblem~\eqref{eq:nclsubpb} are:
 \end{equation}
 Upon introducing a slack $s := t - W_1 W_2e$, a primal-dual interior-point method
 solves the system~\eqref{eq:kktncl} for $(w, r, t, \lambda, \nu)$ using a Newton method. For a given
-barrier parameter $\mu > 0$, the complementarity constraints are reformulated as
+barrier parameter $\mu > 0$, the complementarity constraints in \eqref{eq:kktncl} are reformulated as
 \begin{equation}
   S V_0 = \mu e \; , \; W_1 V_1 = \mu e \; , \; W_2 V_2 = \mu e \; ,
 \end{equation}
@@ -738,7 +736,7 @@ with $S = \text{diag}(s)$, $V_i = \text{diag}(\nu_i)$ for $i=1,2,3$.
 
 Our implementation of NCL uses MadNLP to solve \eqref{eq:kktncl}. The barrier $\mu$ is updated
 using the Fiacco-McCormick rule. The globalization is performed using a filter line-search
-algorithm XX. At each IPM iteration, the Newton system associated to NCL subproblem reduces to
+algorithm \cite{wachter2006implementation}. At each IPM iteration, the Newton system associated to NCL subproblem reduces to
 \begin{equation}
   \label{eq:newtonsystem}
   \begin{bmatrix}
@@ -755,8 +753,8 @@ algorithm XX. At each IPM iteration, the Newton system associated to NCL subprob
   \; ,
 \end{equation}
 for $\Delta y = (\Delta \lambda, \Delta \nu_0)$ the update for the multipliers,
-$(r_1, r_2)$ an appropriate right-hand-side set by the IPM,
-the matrix $A$ being defined for $H = \nabla^2_{ww} \mathcal{L}(w, r, t, \lambda,\nu)$:
+$(r_1, r_2)$ an appropriate right-hand-side set by the IPM.
+The matrix $A$ is defined for $H = \nabla^2_{ww} \mathcal{L}(w, r, t, \lambda,\nu)$:
 \begin{equation}
   \label{eq:blockA}
   A = \begin{bmatrix}
@@ -765,7 +763,7 @@ the matrix $A$ being defined for $H = \nabla^2_{ww} \mathcal{L}(w, r, t, \lambda
     H_{20} & H_{21} + V_0 & H_{22} + W_2^{-1} V_2
   \end{bmatrix} \; ,
 \end{equation}
-and the respective Jacobian and regularization terms:
+and with the Jacobian and regularization terms:
 \begin{equation}
   \label{eq:blockBC}
   B = \begin{bmatrix}
@@ -796,7 +794,7 @@ accounts for NCL's robustness on degenerate instances.
 Here, the MPCC structure leads to two potential degeneracies in \eqref{eq:newtonsystem}.
 First, if strict complementarity does not hold ($\mathcal{I}_{00}(w) \neq \emptyset$)
 at the solution $w$, the corresponding rows in $\begin{bmatrix}
-  0 & W_2 & W_1 \end{bmatrix}$ converges to 0, implying $B$ is not full rank at the limit.
+  0 & W_2 & W_1 \end{bmatrix}$ converge to 0, implying $B$ is not full rank at the limit.
 In that case, the non-zero block $C$ ensures that \eqref{eq:newtonsystem} remains non-singular.
 Second, the bilinear terms $\begin{bmatrix} 0 & V_0 \\ V_0 & 0 \end{bmatrix}$
 appearing in $A$ increases the indefinitess in \eqref{eq:newtonsystem}, requiring
@@ -807,7 +805,7 @@ observed in practice that $\nu_0$ converges to $0$, keeping the impact of
 this second degeneracy limited.
 
 The linear system~\eqref{eq:newtonsystem} is sparse symmetric indefinite.
-As a result, traditional optimization solvers often fallback to HSL MA27 or MA57 to solve \eqref{eq:newtonsystem}.
+As a result, traditional optimization solvers often resort to HSL MA27 or MA57 to solve \eqref{eq:newtonsystem}.
 These solvers use numerical pivoting for stability, a method known to be difficult to parallelize
 and limiting the tractability of these solvers for large-scale SCOPF.
 However, the non-zero block $C$ adds a regularization to the system, which allows
@@ -827,24 +825,23 @@ on the SCOPF problem~\eqref{eq:scopf}.
 
 MadNCL has been implemented in Julia 1.11, and uses the solver MadNLP to solve
 the subproblems~\eqref{eq:nclsubpb}. As a consequence, MadNCL runs both on the CPU or on the GPU.
-The implementation is described in length in \cite{montoison2025madncl},
+The implementation is described in \cite{montoison2025madncl},
 and is available at this URL: \url{https://github.com/MadNLP/MadNCL.jl}.
-
-The problem~\eqref{eq:scopf} is a large-scale nonlinear programs.
-The two bottlenecks in the algorithm are (i) the evaluation of the derivatives
-and (ii) the solution of the Newton system.
-We have implemented the problem \eqref{eq:scopf} with ExaModels~\cite{shin2024accelerating},
-a modeler that exploits the repeated structures in the model to parallelize efficiently
-the evaluation of the derivatives. We found that
-ExaModels is at least 10x faster than JuMP on the CPU. Furthermore, ExaModels supports
-the evaluation of the derivatives on the GPU, which gives us an additional speed-up factor.
-When MadNCL runs on the CPU, the Newton systems~\eqref{eq:newtonsystem} are solved with HSL MA57.
-On the GPU, we use the linear solver NVIDIA cuDSS, which implements a signed Cholesky factorization.
 The CPU and GPU implementations of MadNCL are referred to as MadNCL-CPU and MadNCL-GPU, respectively.
 
+In terms of running time,
+the two bottlenecks in the algorithm are (i) the evaluation of the derivatives
+and (ii) the solution of the Newton system.
+On the one hand, we have implemented the problem \eqref{eq:scopf} with ExaModels~\cite{shin2024accelerating},
+a modeler that exploits the repeated structures in the model to evaluate it in parallel.
+We found that ExaModels is at least 10x faster than JuMP on the CPU. Furthermore, ExaModels supports
+the evaluation of the derivatives on the GPU, which gives us an additional speed-up factor.
+On the other hand, the Newton systems~\eqref{eq:newtonsystem} are solved with HSL MA57 on the CPU.
+On the GPU, we use the linear solver NVIDIA cuDSS, implementing a signed Cholesky factorization.
+
 We compare MadNCL with the interior-point solver Knitro~\cite{waltz2006interior},
-running on the CPU with the linear solver HSL MA57. Knitro uses JuMP to evaluate the SCOPF model~\eqref{eq:scopf}.
-Knitro supports problems with complementarity constraints, and implements the $\ell_1$-exact penalty
+running on the CPU with the linear solver HSL MA57. Knitro uses JuMP to evaluate the SCOPF model~\eqref{eq:scopf}
+and supports problems with complementarity constraints: it implements the $\ell_1$-exact penalty
 method described in \cite{leyffer2006interior}.
 As a contender in the GO-competition, the support of complementarity constraints in Knitro has
 been significantly improved in the recent years.
@@ -855,35 +852,52 @@ The GPU is a NVIDIA A30 with 24GB of device memory.
 We provide the code to reproduce the benchmark in this repository: \url{https://github.com/frapac/pscc-scopf}.
 
 \subsection{Contingency screening}
-Screening of contingencies is an important part pre-processing step
-for solving SCOPF~\cite{capitanescu2007contingency}.
-The goal is to identify a set of representative critical contingencies in order to
-reduce the total number of contingencies $K$ in \eqref{eq:scopf} (hence reducing the size of the problem).
-Our goal is to detect the binding contingencies that require to update the base solution $u_0$
-to become feasible. Unfortunately, not all the contingencies are feasible: some
+\label{sec:numerics:screening}
+Screening of contingencies is an important part in SCOPF's pre-processing~\cite{capitanescu2007contingency}.
+The goal is to reduce the total number of contingencies $K$ in \eqref{eq:scopf} by identifying a set of representative critical contingencies.
+Unfortunately, not all the contingencies are feasible: some
 are \emph{structurally infeasible} (there is no base solution $u_0$ such that
 \eqref{eq:screening} is feasible), and some others are conflicting (for two contingencies
 $k, l$, there is no $u_0$ such that the two associated problems~\eqref{eq:screening} are feasible).
 In that case, NCL falls back automatically to the feasibility problem~\eqref{eq:feaspb}
-by increasing the regularization $\rho^{(n)}$ to infinity. As a result,
-the algorithm returns the
-regularization $r$ that minimizes the constraint deviation (with guarantees in the
-convex case~\cite{chiche2016augmented}).
+by increasing the penalty $\rho^{(n)}$ to infinity. As a result, the algorithm returns the
+regularization $r$ that minimizes the constraint deviation (with guarantees in the convex case~\cite{chiche2016augmented}).
 
-Here, we assess the performance of MadNCL when scanning the contingencies in a network.
-We compute a base case solution $u_0$ by solving an OPF problem, and solve the
+We assess the performance of MadNCL when scanning the contingencies in a network.
+We compute a base case solution $u_0$ by solving the AC OPF problem, and solve the
 system~\eqref{eq:screening} using MadNCL. MadNCL reformulates
 the system~\eqref{eq:screening} as a feasibility problem~\eqref{eq:feaspb}.
 The final objective value quantifies the contingency's infeasibility: the closer to 0,
-the more feasible it is. On the contrary, a large objective value indicates that the contingency is infeasible.
+the closer to feasibility. On the contrary, a large objective value indicates that the contingency is infeasible.
+We compare the average time to screen one line contingency in Table~\ref{tab:timecontingency}.
+Both Knitro and MadNCL solves the problem~\eqref{eq:screening} and run on the CPU using the linear solver HSL MA57. Knitro handles explicitly the complementarity constraints, whereas MadNCL
+reformulates the problem in Scholtes form~\eqref{eq:mpccnlp}. We observe that in term
+of computation time, MadNCL is 10 times faster than Knitro. MadNCL is able to detect
+infeasible problems (a common occurence in contingency screening) much faster than
+the algorithm implemented in Knitro.
 In Figure~\ref{fig:contingency}, we scan all the line contingencies for
 the instance {\tt ACTIVSg500} and we order them by level of infeasibility (as measured
 by the final objective returned by MadNCL).
-We observe that all contingencies are infeasible w.r.t. the base case control $u_0$:
-the 350 first contingencies lead only to a small constraint violation and are easier
-to handle than the 250 remaining contingencies, leading to a significantly larger violation.
 
-% detail contingency screening here + fast detection of infeasibility
+\begin{table}[!ht]
+\centering
+\caption{Average time to scan a contingency (in seconds) for different instances.}
+\begin{tabular}{|r|rr|}
+  \hline
+  Case  & Knitro (s) & MadNCL-CPU (s) \\
+  \hline
+  118ieee & 0.5 & 0.01 \\
+  ACTIVSg200 & 0.5 & 0.1 \\
+  300ieee & 5.5 & 0.2 \\
+  ACTIVSg500 & 5.4 &  0.3  \\
+  1354pegase & 75.4  & 5.0 \\
+  ACTIVSg2000 & 40.7 & 2.5  \\
+  2869pegase & 238.4  & 14.1  \\
+  \hline
+\end{tabular}
+\label{tab:timecontingency}
+\end{table}
+
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=.4\textwidth]{./figures/contingency.pdf}
@@ -893,24 +907,69 @@ the classical OPF problem.}
 \label{fig:contingency}
 \end{figure}
 
-\subsection{Solution of large-scale SCOPF}
 
+\subsection{Solution of large-scale SCOPF on GPU}
+We are now in position to answer the main research question in this paper: is
+MadNCL effective at solving large-scale SCOPF on the GPU?
+We set up the following experiment.
+We compare Knitro and MadNCL running on the CPU (with HSL MA57) with MadNCL-GPU (using NVIDIA cuDSS).
+Knitro uses the modeler JuMP, which supports passing the complementarity constraints explicitly to the solver.
+On the contrary, MadNCL converts the JuMP model to ExaModels~\cite{shin2024accelerating} to benefit from faster evaluation
+of derivatives (in particular on the GPU). MadNCL solves the Scholtes reformulation~\eqref{eq:mpccnlp}.
+We select $K$ representative contingencies using the method described in \S\ref{sec:numerics:screening},
+and ensure that all the contingencies are not structurally infeasible (so \eqref{eq:scopf} remains feasible).
 
-% \subsection{Tables}
-% An example of a floating table. Note that, for PSCC style tables, the
-% \caption command should come BEFORE the table and, given that table
-% captions serve much like titles, are usually capitalized except for words
-% such as a, an, and, as, at, but, by, for, in, nor, of, on, or, the, to
-% and up, which are usually not capitalized unless they are the first or
-% last word of the caption. Table text will default to \footnotesize as
-% IEEE normally uses this smaller font for tables.
-% The \label must come after \caption as always.
-%
+First, we consider the case {\tt ACTIVSg500} and increase the number of contingencies
+$K$ from $2$ to $256$ in \eqref{eq:scopf}: with $K=256$, the SCOPF~\eqref{eq:scopf} has almost 1 million of variables.
+We detail the results in Table~\ref{tab:scopfscalability}. We observe that MadNCL-GPU is the only
+solver able to find a solution for $K=256$. Looking more closely at the results, MadNCL requires less IPM iterations than Knitro.
+Interestingly, the number of iterations in MadNCL-CPU and MadNCL-GPU gets different for $K \geq 32$: as we enter in the large-scale
+regime, HSL MA57 and NVIDIA cuDSS are returning slightly different solutions, resulting in small discrepancies in the algorithm.
+This is amplified by the parallel nature of NVIDIA cuDSS: consecutive runs in NVIDIA cuDSS can be non-deterministic for large $K$.
+The objective value gives an insight on the quality of the solution: as the problem \eqref{eq:scopf} is non-convex, different algorithms can converge
+to different solutions. We observe here that MadNCL-CPU and MadNCL-GPU both converges to a slightly better solution than Knitro
+(we will see in the next paragraph that this is not always the case).
+We show in Figure~\ref{fig:scalability} the time per iteration (in seconds) against
+the number of contingencies for Knitro, MadNCL-CPU and MadNCL-GPU.
+In term of raw performance, MadNCL-CPU is slightly faster than Knitro: MadNCL
+here benefits from faster evaluations of the derivatives in ExaModels compared to JuMP.
+MadNCL-GPU decreases the time per iteration further by at least an order of magnitude:
+for $K \geq 64$, MadNCL-GPU is 20x faster than Knitro and MadNCL-CPU. The linear solver cuDSS is
+here very effective at solving the linear system \eqref{eq:newtonsystem}, explaining the faster solution time.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=.4\textwidth]{./figures/scalability.pdf}
+\caption{Time per iteration (in seconds) against number of contingencies $K$
+  when solving {\tt ACTIVSg500}. We compare Knitro (using JuMP)
+against MadNCL (using ExaModels). We test MadNCL both on the CPU (using HSL MA57)
+and on the GPU (using NVIDIA cuDSS).}
+\label{fig:scalability}
+\end{figure}
+
 \begin{table*}[!ht]
 \centering
-\caption{This is a table.}
+\caption{Performance of Knitro and MadNCL as we increase the number
+of contingencies $K$ for {\tt ACTIVSg500}. We display the total number of IPM iterations
+and the time to solution (in seconds). The symbol "-" indicates that the solver has failed
+to find a solution.}
 \input{scalability.tex}
+\label{tab:scopfscalability}
 \end{table*}
+
+Second, we compare Knitro and MadNCL-GPU on different instances, with a varying number of contingencies $K$.
+The results are displayed in Table~\ref{tab:benchmark}.
+We observe that MadNCL-GPU is consistently faster than Knitro. As before in Table~\ref{tab:scopfscalability},
+we do not have any guarantee that Knitro converges to the same solution as MadNCL: in particular both algorithms
+return a different solution for {\tt ACTIVSg500} and {\tt 1354pegase}.
+More importantly, we notice that MadNCL is converging in significantly more iterations
+for {\tt ACTIVSg2000} and {\tt 2869pegase}. This points to MadNCL's main limitation:
+as we increase the problem's dimension, we increase the degeneracy in the indefinite linear system~\eqref{eq:newtonsystem}.
+As a result, the filter line-search algorithm used internally to solve the subproblem~\eqref{eq:nclsubpb} has to
+perform numerous primal-dual regularization during the inertia correction, significantly impairing MadNCL's convergence.
+For that reason, we have observed that MadNCL does not converge consistently on larger instances.
+We plan to address this issue in future work.
+
 
 
 % An example is shown in Table~\ref{table_example}.
@@ -918,16 +977,12 @@ the classical OPF problem.}
 % % increase table row spacing, adjust to taste
 % \renewcommand{\arraystretch}{1.3}
 \centering
-\caption{This is a table.}
+\caption{Performance of Knitro and MadNCL-GPU on different instances. We
+  display the total number of IPM iterations and the time to solution (in
+  seconds). The symbol "-" indicates that the solver has failed to find a solution.
+}
 \input{tables.tex}
-% \label{table_example}
-% \begin{tabular}{|c|c|}
-% \hline
-% One & Two\\
-% \hline
-% Three & Four\\
-% \hline
-% \end{tabular}
+\label{tab:benchmark}
 \end{table*}
 
 % \subsection{Figures}
@@ -941,12 +996,6 @@ the classical OPF problem.}
 % \label just after \caption rather than within \caption{}.
 %
 %
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=.4\textwidth]{./figures/scalability.pdf}
-\caption{Simulation results for the network.}
-\label{fig:scalability}
-\end{figure}
 
 % Note that IEEE typically puts floats only at the top, even when this
 % results in a large percentage of a column being occupied by floats.

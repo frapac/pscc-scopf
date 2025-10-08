@@ -13,6 +13,7 @@ function scopf_model(
     contingencies;
     scale_obj=1e-4,
     scale_cc=1e-3,
+    tau_relax=1e-5,
     load_factor=1.0,
     use_mpec=true,
     adjust=:droop,
@@ -64,8 +65,8 @@ function scopf_model(
                     @constraint(model, [(pmax - pg[i, k]), ρn[i, k]] in MOI.Complements(2))
                     @constraint(model, [(pg[i, k] - pmin), ρp[i, k]] in MOI.Complements(2))
                 else
-                    @constraint(model, scale_cc * ρn[i, k] * (pmax - pg[i, k]) <= 0.0)
-                    @constraint(model, scale_cc * ρp[i, k] * (pg[i, k] - pmin) <= 0.0)
+                    @constraint(model, scale_cc * ρn[i, k] * (pmax - pg[i, k]) <= tau_relax)
+                    @constraint(model, scale_cc * ρp[i, k] * (pg[i, k] - pmin) <= tau_relax)
                 end
             elseif adjust == :preventive
                 @constraint(model, pg[i, k] == pg[i, 1])
@@ -84,14 +85,14 @@ function scopf_model(
                     if use_mpec
                         @constraint(model, [(qmax - qg[g, k]), vn[g, k]] in MOI.Complements(2))
                     else
-                        @constraint(model, scale_cc * vn[g, k] * (qmax - qg[g, k]) <= 0.0)
+                        @constraint(model, scale_cc * vn[g, k] * (qmax - qg[g, k]) <= tau_relax)
                     end
                 end
                 if isfinite(qmin)
                     if use_mpec
                         @constraint(model, [(qg[g, k] - qmin), vp[g, k]] in MOI.Complements(2))
                     else
-                        @constraint(model, scale_cc * vp[g, k] * (qg[g, k] - qmin) <= 0.0)
+                        @constraint(model, scale_cc * vp[g, k] * (qg[g, k] - qmin) <= tau_relax)
                     end
                 end
             else

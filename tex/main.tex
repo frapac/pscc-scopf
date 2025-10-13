@@ -126,6 +126,7 @@
 \usepackage[cmex10]{amsmath}
 \usepackage{amsfonts,amssymb,amsthm}
 \usepackage{cleveref}
+\usepackage{xspace}
 % A popular package from the American Mathematical Society that provides
 % many useful and powerful commands for dealing with mathematics. If using
 % it, be sure to load this package with the cmex10 option to ensure that
@@ -305,7 +306,7 @@
 
 \begin{document}
 \title{
-An accelerated Augmented Lagrangian method for AC Security-Constrained Optimal Power Flow
+Augmented Lagrangian method on GPU for Security-Constrained AC Optimal Power Flow
 }
 
 
@@ -382,7 +383,7 @@ The SCOPF is usually formulated as a large-scale linear program called the DC-SC
 grows linearly with the number of contingencies~\cite{alsac2002further}.
 This comes at the price of linearizing the nonlinear physical constraints, incurring the solution's accuracy~\cite{coffrin2012approximating}.
 However, solving the AC-SCOPF with the original nonlinear formulation remains an open challenge,
-and was the main motivation behind the GO competition recently orchestrated by the FERC~\cite{aravena2023recent}.
+and was the main motivation behind the GO competition recently orchestrated by the Federal Energy Regulatory Commission~\cite{aravena2023recent}.
 The issue with the nonlinear formulation is two-fold. First, the AC-SCOPF writes as a huge-scale
 nonlinear program, whose size is beyond the capacity of state-of-the-art nonlinear optimization solvers
 like Ipopt or Knitro~\cite{wachter2006implementation,waltz2006interior,capitanescu2011state}. Second, when incorporating recourse in the post-contingency state, the AC-SCOPF has to encode a set of logical conditions modeling the
@@ -441,7 +442,7 @@ We adapt the formulation used in the GO competition~\cite{aravena2023recent}.
 We denote by $K$ the number of contingencies, and refer to the base case by the index $k=0$.
 We suppose the system has $n_b$ buses, $n_\ell$ lines and $n_g$ generators.
 For $k=0, \cdots, K$, the voltage magnitudes and angles at buses are denoted by
-$(v_m^k, v_a^k) \in \mathbb{R}^{n_b} \times \mathbb{R}^{n_b}$, and the active and reactive power generations by $(p_g^k, q_g^k) \in \mathbb{R}^{n_g} \times \mathbb{R}^{n_g}$.
+$(v_b^k, \theta_b^k) \in \mathbb{R}^{n_b} \times \mathbb{R}^{n_b}$, and the active and reactive power generations by $(p_g^k, q_g^k) \in \mathbb{R}^{n_g} \times \mathbb{R}^{n_g}$.
 For $(a, b) \in \mathbb{R}^2$, we say that $a$ complements $b$ if $a \geq 0$, $b \geq 0$
 and $a b = 0$. The complementarity constraint is denoted by $0 \leq a \perp b \geq 0$.
 
@@ -474,15 +475,15 @@ for all $k=1, \cdots, K$,
 Similarly, the \emph{voltage control} keeps the voltage
 magnitudes at the PV buses at their nominal values $v_{m,b}^k = v_{m,b}^0$ by injecting
 or absorbing reactive power. However, if the reactive power production $q_g^k$ reaches
-its lower $\underline{q}_g$ or upper limit $\overline{q}_g$, the bus is converted to a PQ bus and the voltage allowed
+its lower $\underline{q}_g$ or upper limit $\overline{q}_g$, the bus is converted to a PQ bus and the voltage is allowed
 to vary. The PV/PQ switches are modeled with a second set of complementarity constraints writing,
-for $\nu_-^k \geq 0$ and $\nu_+^k \geq 0$,
+for $\nu_{b-}^k \geq 0$ and $\nu_{b+}^k \geq 0$,
 \begin{equation}
   \label{eq:pvpq}
   \begin{aligned}
-    & \nu_+^k - \nu_-^k = v_m^k - v_m^0 \; ,\\
-    & 0 \leq \nu_{-}^k \perp \overline{q}_g - q_g^k \geq 0 \; , \\
-    & 0 \leq \nu_{+}^k \perp q_g^k - \underline{q}_g \geq 0 \; .
+    & \nu_{b+}^k - \nu_{b-}^k = v_b^k - v_b^0 \; ,\\
+    & 0 \leq \nu_{b-}^k \perp \overline{q}_g - q_g^k \geq 0 \; , \\
+    & 0 \leq \nu_{b+}^k \perp q_g^k - \underline{q}_g \geq 0 \; .
   \end{aligned}
 \end{equation}
 As a result, the corrective SCOPF modeling the recourse with \eqref{eq:droopmpec}
@@ -493,8 +494,8 @@ competition, and is described in length in \cite{aravena2023recent,curtis2023dec
 \subsection{AC-SCOPF}
 We adapt the formulation of the AC-SCOPF used in \cite{frank2016introduction} to include the complementarity
 constraints modeling the AGC~\eqref{eq:droopmpec} and the PV/QP switches~\eqref{eq:pvpq}.
-We note $u_0 = (p_g^0, v_{m,PV}^0)$ and $x_0 = (v_a^0, v_{m,PQ}^0, q_g^0)$ the control and the state in the base case,
-and $u_k = (p_g^k, v_{m,PV}^k)$ and $x^k = (v_a^k, v_{m,PQ}^k, q_g^k, \Delta^k, \pi_g^k, \nu^k)$
+We note $u_0 = (p_g^0, v_{b,PV}^0)$ and $x_0 = (\theta_b^0, v_{b,PQ}^0, q_g^0)$ the control and the state in the base case,
+and $u_k = (p_g^k, v_{b,PV}^k)$ and $x^k = (\theta_b^k, v_{b,PQ}^k, q_g^k, \Delta^k, \pi_g^k, \nu^k_b)$
 the control and the state in the contingency $k$. We define the AC-SCOPF problem as:
 \begin{equation}
   \label{eq:scopf}
@@ -502,28 +503,26 @@ the control and the state in the contingency $k$. We define the AC-SCOPF problem
     \min_{x, u} \; & f(x_0, u_0) \\
     \text{s.t.} \quad & g_0(x_0, u_0) = 0 \; , \;  h_0(x_0, u_0) \leq 0 \; , \\
                       & \forall k \in \{1,\cdots,K\} :\\
-                            & g_k(x_k, u_k) = 0 \;, \;  h_k(x_k, u_k) \leq 0 \; , \\
-                            & 0 \leq G(u_0, x_k, u_k) \perp H(x_k, u_k) \geq 0 \; ,
+                            & g_k(u_0, x_k, u_k) = 0 \;, \;  h_k(x_k, u_k) \leq 0 \; , \\
+                            & 0 \leq G(x_k, u_k) \perp H(x_k, u_k) \geq 0 \; ,
   \end{aligned}
 \end{equation}
 where $u = (u_0, u_1, \cdots, u_K)$, $x = (x_0, x_1, \cdots, x_K)$,
 $f(\cdot)$ is the objective in the base case scenario,
-$g_k(\cdot)$ encodes the power-flow constraints, $h_k(\cdot)$ the operational
+$g_k(\cdot)$ encodes the power-flow constraints and the two linear constraints
+in \eqref{eq:droopmpec} and \eqref{eq:pvpq}, $h_k(\cdot)$ the operational
 constraints (line-flow and operational bounds) and $G(\cdot)$ and
-$H(\cdot)$ are two functions encoding the coupling between the base-case
-and the contingency $k$, here expressed with the complementarity parts in
-\eqref{eq:droopmpec} and \eqref{eq:pvpq}.
+$H(\cdot)$ are two functions encoding the
+complementarity parts in \eqref{eq:droopmpec} and \eqref{eq:pvpq}.
 
-Note that the only coupling between the base case and the contingencies
-appears through the complementarity conditions~\eqref{eq:droopmpec}-\eqref{eq:pvpq}.
 For a given base-case control $u_0$, the contingency $k$ is feasible if there is a solution
 $(x_k, u_k)$ to the nonlinear system with complementarity constraints:
 \begin{equation}
   \label{eq:screening}
   \left\{
   \begin{aligned}
-    &  g_k(x_k, u_k) = 0 \; ,\;  h_k(x_k, u_k) \leq 0 \; , \\
-    & 0 \leq G(u_0, x_k, u_k) \perp H(x_k, u_k) \geq 0 \; .
+    &  g_k(u_0, x_k, u_k) = 0 \; ,\;  h_k(x_k, u_k) \leq 0 \; , \\
+    & 0 \leq G(x_k, u_k) \perp H(x_k, u_k) \geq 0 \; .
   \end{aligned}
   \right.
 \end{equation}
@@ -544,8 +543,12 @@ the equivalent MPCC in vertical form:
 \begin{equation}
   \label{eq:mpcc}
   \begin{aligned}
-    \min_{w \in \mathbb{R}^n} \; & \phi(w) \\
-    \text{s.t.} \quad & c(w) = 0 \; , \;  0 \leq w_1 \perp w_2 \geq 0 \; ,
+    \min_{w \in \mathbb{R}^n} \; & \phi(w) \quad \text{s.t.} \quad \left\{
+      \begin{aligned}
+        & c(w) = 0 \; , w_0 \geq 0 \; , \\
+        & 0 \leq w_1 \perp w_2 \geq 0 \; ,
+      \end{aligned}
+    \right.
   \end{aligned}
 \end{equation}
 with respectively
@@ -555,36 +558,41 @@ in \eqref{eq:scopf}.
 We partition the decision variable as $w = (w_0, w_1, w_2) \in \mathbb{R}^{n-2p} \times
 \mathbb{R}^p \times \mathbb{R}^p$ to isolate the variables contributing to the complementarity
 constraints.
-For multipliers $(\lambda, \mu_1, \mu_2) \in \mathbb{R}^m \times \mathbb{R}^p \times \mathbb{R}^p$, we define
+For multipliers $(\lambda, \xi, \mu_1, \mu_2) \in \mathbb{R}^{m} \times \mathbb{R}^{n-2p} \times \mathbb{R}^p \times \mathbb{R}^p$, we define
 the MPCC Lagrangian as
 \begin{equation}
-  \mathcal{L}^{\mathrm{MPCC}}(w, \lambda, \mu) = \phi(w) + \lambda^\top c(w) - \mu_1^\top w_1 - \mu_2^\top w_2 \; .
+  \mathcal{L}^{\mathrm{MPCC}}(w, \lambda, \mu) = \phi(w) + \lambda^\top c(w) - \xi^\top w_0 - \mu_1^\top w_1 - \mu_2^\top w_2 \; .
 \end{equation}
-
 The MPCC~\eqref{eq:mpcc} is equivalent to the nonlinear program:
 \begin{equation}
   \label{eq:mpccnlp}
   \begin{aligned}
-    \min_{w \in \mathbb{R}^n} \; & \phi(w) \\
-    \text{s.t.} \quad & c(w) = 0 \; , \; (w_1, w_2) \geq 0 \; , \; W_1 W_2 e \leq 0 \; ,
+    \min_{w \in \mathbb{R}^n} \; & \phi(w) \quad \text{s.t.} \quad
+    \left\{
+    \begin{aligned}
+      & c(w) = 0 \; , \; w_0 \geq 0 \; , \\
+      & (w_1, w_2) \geq 0 \; , \; W_1 W_2 e \leq 0 \; ,
+    \end{aligned}
+    \right.
   \end{aligned}
 \end{equation}
 where we have noted $W_1 = \text{diag}(w_1)$ and $W_2 = \text{diag}(w_2)$ and $e \in \mathbb{R}^p$
 a vector of ones.
 The Lagrangian for \eqref{eq:mpccnlp} is
-\begin{equation}
-  \mathcal{L}(w, \lambda, \nu) = \phi(w) + \lambda^\top c(w) - \nu_1^\top w_1 - \nu_2^\top w_2 + \nu_0^\top W_1 W_2 e \; .
-\end{equation}
+\begin{multline}
+  \mathcal{L}(w, \lambda, \nu) = \phi(w) + \lambda^\top c(w) \\ - \xi^\top w_0 - \nu_1^\top w_1 - \nu_2^\top w_2 + \nu_0^\top W_1 W_2 e \; .
+\end{multline}
 The problem~\eqref{eq:mpccnlp} is degenerate, in the sense that
 the relative interior of the feasible set is empty. As a consequence, \eqref{eq:mpccnlp}
 does not satisfy the Mangasarian-Fromovitz constraint qualification (MFCQ), implying the multipliers $(\lambda, \nu)$ can be unbounded.
-This can cause serious numerical issues in classical nonlinear programming solvers.
+This can cause serious numerical issues if \eqref{eq:mpccnlp} is directly treated
+by classical nonlinear programming solvers.
 
 \subsection{First order stationary conditions}
 \label{sec:mpcc:stationary}
 We note the feasible set of \eqref{eq:mpcc} as
 \begin{equation}
-  \Omega = \{ w \in \mathbb{R}^n \; | \; c(w) = 0 \, , \; 0 \leq w_1 \perp w_2 \geq 0 \} \; .
+  \Omega = \{ w \in \mathbb{R}^n \; | \; c(w) = 0 \, , w_0 \geq 0 \; ,\; 0 \leq w_1 \perp w_2 \geq 0 \} \; .
 \end{equation}
 For any feasible point $w \in \Omega$, we define the index sets
 \begin{equation}
@@ -594,36 +602,36 @@ For any feasible point $w \in \Omega$, we define the index sets
     \mathcal{I}_{00}(w) = \{ i \in \{1, \cdots, p\} \; | \; w_{1,i} = 0 \, , \, w_{2,i} = 0 \} \; .
   \end{aligned}
 \end{equation}
-If $\mathcal{I}_{00}(w)$ is empty, we say $w$ satisfies \emph{strict complementarity}.
-A point $w \in \Omega$ is \emph{Bouligand-stationary}~\cite{scheel2000mathematical} if $d = 0$ solves the linear program
-with complementarity constraints (LPCC):
-\begin{equation}
-  \label{eq:stationarylpcc}
-  \begin{aligned}
-    \min_{d \in \mathbb{R}^n} \; & \; \nabla \phi(w)^\top d \\
-                                & \nabla c_i(w)^\top d = 0 \;,\\
-                                & d_{1,i} = 0 \;,\; & \forall i \in \mathcal{I}_{0+}(w), \\
-                                & d_{2,i} = 0 \;,\; & \forall i \in \mathcal{I}_{+0}(w), \\
-                                & 0 \leq d_{1,i} \perp d_{2,i} \geq 0 \;,\; & \forall i \in \mathcal{I}_{00}(w) \; .
-  \end{aligned}
-\end{equation}
+% If $\mathcal{I}_{00}(w)$ is empty, we say $w$ satisfies \emph{strict complementarity}.
+% A point $w \in \Omega$ is \emph{Bouligand-stationary}~\cite{scheel2000mathematical} if $d = 0$ solves the linear program
+% with complementarity constraints (LPCC):
+% \begin{equation}
+%   \label{eq:stationarylpcc}
+%   \begin{aligned}
+%     \min_{d \in \mathbb{R}^n} \; & \; \nabla \phi(w)^\top d \\
+%                                 & \nabla c_i(w)^\top d = 0 \;,\\
+%                                 & d_{1,i} = 0 \;,\; & \forall i \in \mathcal{I}_{0+}(w), \\
+%                                 & d_{2,i} = 0 \;,\; & \forall i \in \mathcal{I}_{+0}(w), \\
+%                                 & 0 \leq d_{1,i} \perp d_{2,i} \geq 0 \;,\; & \forall i \in \mathcal{I}_{00}(w) \; .
+%   \end{aligned}
+% \end{equation}
 The point $w \in \Omega$ satisfies \emph{strong stationarity}~\cite{scheel2000mathematical} if there exists
 multipliers $(\lambda, \mu) \in \mathbb{R}^m \times \mathbb{R}^{2p}$ such that
 \begin{equation}
   \label{eq:strongstationarity}
   \begin{aligned}
     & \nabla_w \mathcal{L}^{\mathrm{MPCC}}(w, \lambda, \mu) = 0 \; ,\\
-    & c(w) = 0 \; ,\\
+    & c(w) = 0 \; , \; w_0 \geq 0 \; ,\\
     & w_{1,i} \geq 0 \; , \; \mu_{1,i} = 0 \;,\; w_{2, i} = 0 \;,\; \mu_{2,i} \in \mathbb{R} \;,\; \forall i \in \mathcal{I}_{+0}(w) \; , \\
     & w_{1,i} = 0 \; , \; \mu_{1,i} \in \mathbb{R} \;,\; w_{2, i} \geq 0 \;,\; \mu_{2,i} = 0 \;,\; \forall i \in \mathcal{I}_{0+}(w) \; , \\
     & w_{1,i} = 0 \; , \; \mu_{1,i} \geq 0 \;,\; w_{2, i} = 0 \;,\; \mu_{2,i} \geq 0 \;,\; \forall i \in \mathcal{I}_{00}(w) \; .
   \end{aligned}
 \end{equation}
 We note that the conditions
-\eqref{eq:strongstationarity} encodes the KKT stationary solution of a relaxed nonlinear program~\cite{scheel2000mathematical}.
-We say that MPCC-LICQ holds at $x \in \Omega$ if this regular nonlinear program itself satisfies LICQ.
+\eqref{eq:strongstationarity} are the KKT stationary solution of a relaxed nonlinear program~\cite{scheel2000mathematical} with no complementarity constraint.
+We say that MPCC-LICQ holds at $x \in \Omega$ if this relaxed nonlinear program itself satisfies LICQ.
 Our goal is to find a strong stationary solution for \eqref{eq:mpcc}.
-Every $w \in \Omega$ satisfying strong stationarity satisfies Bouligand stationarity~\cite{scheel2000mathematical}, with equivalence if MPCC-LICQ holds.
+% Every $w \in \Omega$ satisfying strong stationarity satisfies Bouligand stationarity~\cite{scheel2000mathematical}, with equivalence if MPCC-LICQ holds.
 
 
 \subsection{Solution methods}
@@ -643,28 +651,28 @@ Assuming MPCC-LICQ, the $\ell_1$-exact penalty method converges to a strong-stat
 This is the method used in the solver Knitro~\cite{leyffer2006interior}.
 In the next section, we interpret NCL as a mix of regularization and penalty-based methods.
 
-\section{Augmented Lagrangian algorithm}
+\section{Augmented Lagrangian for MPCCs}
 In this section, we present Algorithm NCL in \S\ref{sec:ncl:ncl} and
 we analyze the structure of the Newton systems in \S\ref{sec:ncl:newton}.
-NCL solves the problem~\eqref{eq:mpccnlp} using an augmented Lagrangian method.
+We show that NCL can solve the problem~\eqref{eq:mpccnlp} on the GPU.
+
+\subsection{Algorithm NCL}
+\label{sec:ncl:ncl}
 NCL is strictly equivalent to the classical augmented Lagrangian method,
 but uses a nonlinearly constrained formulation in the subproblems.
 When solving the MPCC~\eqref{eq:mpcc}, it has been proven in \cite{izmailov2012global} that the augmented Lagrangian
 method converges to a strongly stationary solution $x \in \Omega$ if MPCC-LICQ holds at $x$
 and the sequence of multiplier estimates $\{\nu_0^n\}_n$ generated by the algorithm
 has a bounded subsequence (this prevents the algorithm to converge to a spurious solution).
-
-\subsection{Algorithm NCL}
-\label{sec:ncl:ncl}
 NCL operates at two level: it updates the penalty $\rho^{(n)}$
-and the two multiplier estimates $(\{\lambda^{(n)}, \nu_0^{(n)}) \in \mathbb{R}^m \times \mathbb{R}^p$ in the \emph{outer iterations}, whereas the \emph{innner iterations}
+and the two multiplier estimates $(\lambda^{(n)}, \nu_0^{(n)}) \in \mathbb{R}^m \times \mathbb{R}^p$ in the \emph{outer iterations}, whereas the \emph{innner iterations}
 solves the nonlinear program associated to NCL's subproblem:
 \begin{equation}
   \label{eq:nclsubpb}
   \begin{aligned}
     \min_{w, r, t} \; & \; \mathcal{L}_\rho(w, r, t, \lambda^{(n)}, \nu_0^{(n)}) \\
     \text{s.t.} \quad & c(w) - r = 0 \; , \\
-                      & W_1 W_2 e \leq t  \; , \; (w_1, w_2) \geq 0 \; ,
+                      & W_1 W_2 e \leq t  \; , \; (w_0, w_1, w_2) \geq 0 \; ,
   \end{aligned}
 \end{equation}
 with
@@ -714,11 +722,11 @@ If the problem is infeasible, NCL converges to a stationary solution of the \emp
   \begin{aligned}
     \min_{w, r, t} \; & \; \|r\|^2 + \|t\|^2 \\
     \text{s.t.} \quad & c(w) - r = 0 \\
-                      & (w_1, w_2) \geq 0 \; , \; W_1 W_2 e \leq t \;.
+                      & (w_0, w_1, w_2) \geq 0 \; , \; W_1 W_2 e \leq t \;.
   \end{aligned}
 \end{equation}
-By checking the respective values in the regularization variables $r$ and $t$,
-we can quickly assess which contingencies and constraints are rendering the SCOPF problem~\eqref{eq:scopf} infeasible.
+% By checking the respective values in the regularization variables $r$ and $t$,
+% we can quickly assess which contingencies and constraints are rendering the SCOPF problem~\eqref{eq:scopf} infeasible.
 On the contrary to the formulation used by the GO-competition~\cite{aravena2023recent}, we do not
 have to penalize the constraint violation in the objective using a $\ell_1$ penalty, as the augmented
 Lagrangian algorithm is doing that automatically.
@@ -733,6 +741,7 @@ The Karush-Kuhn-Tucker (KKT) stationary conditions for the subproblem~\eqref{eq:
     & \lambda^{(n)} + \rho^{(n)} r - \lambda = 0 \\
     & \nu_0^{(n)} + \rho^{(n)} t - \nu = 0 \\
     & c(w) - r = 0 \\
+    & 0 \leq w_0 \perp \xi \geq 0 \\
     & 0 \leq t - W_1 W_2 e \perp \nu_0 \geq 0 \\
     & 0 \leq w_1 \perp \nu_1 \geq 0 \\
     & 0 \leq w_2 \perp \nu_2 \geq 0 \; .
@@ -740,11 +749,11 @@ The Karush-Kuhn-Tucker (KKT) stationary conditions for the subproblem~\eqref{eq:
 \end{equation}
 Upon introducing a slack $s := t - W_1 W_2e$, a primal-dual interior-point method
 solves the system~\eqref{eq:kktncl} for $(w, r, t, s, \lambda, \nu)$ using a Newton method. For a given
-barrier parameter $\mu > 0$, the complementarity constraints in \eqref{eq:kktncl} are reformulated as
+barrier parameter $\mu > 0$, the complementarity conditions in \eqref{eq:kktncl} are reformulated as
 \begin{equation}
-  S V_0 = \mu e \; , \; W_1 V_1 = \mu e \; , \; W_2 V_2 = \mu e \; ,
+  W_0 \Xi = \mu e \; , \; S V_0 = \mu e \; , \; W_1 V_1 = \mu e \; , \; W_2 V_2 = \mu e \; ,
 \end{equation}
-with $S = \text{diag}(s)$, $V_i = \text{diag}(\nu_i)$ for $i=0,1,2$.
+with $\Xi = \text{diag}(\xi)$, $S = \text{diag}(s)$, $V_i = \text{diag}(\nu_i)$ for $i=0,1,2$.
 
 Our implementation of NCL uses MadNLP to solve \eqref{eq:kktncl}. The barrier $\mu$ is updated
 using the Fiacco-McCormick rule. The globalization is performed using a filter line-search
@@ -770,7 +779,7 @@ The matrix $A$ is defined for $H = \nabla^2_{ww} \mathcal{L}(w, r, t, \lambda,\n
 \begin{equation}
   \label{eq:blockA}
   A = \begin{bmatrix}
-     H_{00} & H_{01} & H_{02} \\
+    H_{00} + W_0^{-1} \Xi & H_{01} & H_{02} \\
     H_{10} & H_{11} + W_1^{-1} V_1 & H_{12} + V_0 \\
     H_{20} & H_{21} + V_0 & H_{22} + W_2^{-1} V_2
   \end{bmatrix} \; ,
@@ -809,11 +818,10 @@ at the solution $w$, the corresponding rows in $\begin{bmatrix}
   0 & W_2 & W_1 \end{bmatrix}$ converge to 0, implying $B$ is not full rank at the limit.
 In that case, the non-zero block $C$ ensures that \eqref{eq:newtonsystem} remains non-singular.
 Second, the bilinear terms $\begin{bmatrix} 0 & V_0 \\ V_0 & 0 \end{bmatrix}$
-appearing in $A$ increases the indefinitess in \eqref{eq:newtonsystem}, requiring
-additional primal-dual regularizations in the inertia correction mechanism used
-in Ipopt and MadNLP to compute a descent direction.
-The impact of this second degeneracy remains limited
-if $\nu_0$ converges to $0$, which often happens in practice.
+appearing in $A$ increases the indefinitess in \eqref{eq:newtonsystem},
+but it does not impact the positive-definitess of the reduced Hessian
+as we approach the solution~\cite[Section 3.4]{demiguel2005two}, keeping limited
+the effect of this second degeneracy.
 
 The linear system~\eqref{eq:newtonsystem} is sparse symmetric indefinite.
 As a result, traditional optimization solvers often resort to HSL~\cite{duff1983multifrontal} to solve \eqref{eq:newtonsystem}.
@@ -823,8 +831,6 @@ However, the non-zero block $C$ adds a regularization to the system, which allow
 a solution of \eqref{eq:newtonsystem} with a pivoting-free factorization, e.g. using the signed Cholesky factorization~\cite{montoison2025madncl}.
 Efficient parallel implementations of pivoting-free algorithms exist for GPUs,
 opening the door for a fast factorization routine for \eqref{eq:newtonsystem}.
-
-% \subsection{Crossover}
 
 
 

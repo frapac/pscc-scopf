@@ -355,7 +355,11 @@ Cambridge, Massachusetts, USA
 % As a general rule, do not put math, special symbols or citations
 % in the abstract
 \begin{abstract}
-  We present a new algorithm for solving large-scale security-constrained optimal power flow (SC-OPF) in polar form. The method builds on Algorithm Nonlinearly Constrained augmented Lagrangian (NCL), an augmented Lagrangian method in which the subproblems are solved using an interior-point method. NCL has two key advantages for large-scale SC-OPF. First, it is robust, handling difficult problems such as infeasible ones or models with complementarity constraints. Second, the augmented Lagrangian term naturally regularizes the Newton linear systems within the interior-point method, enabling of a pivoting-free factorization that can be efficiently parallelized on GPUs. We assess NCL's performance on large-scale corrective AC-SCOPFs with complementarity constraints modeling the corrective actions. Numerical results show that NCL significantly outperforms the state-of-the-art solver Knitro in solving large-scale SCOPF.
+  We present a new algorithm for solving large-scale security-constrained optimal power flow in polar form (AC-SCOPF). The method builds on Algorithm Nonlinearly Constrained augmented Lagrangian (NCL), an augmented Lagrangian method in which the subproblems are solved using an interior-point method. NCL has two key advantages for large-scale SC-OPF. First, NCL handles difficult problems such as infeasible ones or models with complementarity constraints. Second, the augmented Lagrangian term naturally regularizes the Newton linear systems within the interior-point method, enabling to solve the Newton systems with a pivoting-free factorization that can be efficiently parallelized on GPUs.
+  We assess the performance of our implementation, called MadNCL, on large-scale corrective AC-SCOPFs, with complementarity constraints modeling the corrective actions. Numerical results show that MadNCL
+  can solve AC-SCOPF with 500 buses and 256 contingencies
+  fully on the GPU in less than 3 minutes, whereas Knitro takes more than 3 hours
+  to find a similar solution.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -385,7 +389,7 @@ The SCOPF is usually formulated as a large-scale linear program called the DC-SC
 grows linearly with the number of contingencies~\cite{alsac2002further}.
 This comes at the price of linearizing the nonlinear physical constraints, incurring the solution's accuracy~\cite{coffrin2012approximating}.
 However, solving the AC-SCOPF with the original nonlinear formulation remains an open challenge,
-and was the main motivation behind the GO competition recently orchestrated by the Federal Energy Regulatory Commission~\cite{aravena2023recent}.
+and was the main motivation behind the recent GO competition~\cite{aravena2023recent}.
 The issue with the nonlinear formulation is two-fold. First, the AC-SCOPF writes as a huge-scale
 nonlinear program, whose size is beyond the capacity of state-of-the-art nonlinear optimization solvers
 like Ipopt or Knitro~\cite{wachter2006implementation,waltz2006interior,capitanescu2011state}.
@@ -584,7 +588,7 @@ does not satisfy the Mangasarian-Fromovitz constraint qualification (MFCQ), impl
 This can cause serious numerical issues if \eqref{eq:mpccnlp} is directly treated
 by classical nonlinear programming solvers.
 
-\subsection{First order stationary conditions}
+\subsection{First-order stationary conditions}
 \label{sec:mpcc:stationary}
 We note the feasible set of \eqref{eq:mpcc} as
 \begin{equation*}
@@ -634,7 +638,7 @@ Our goal is to find a strong stationary solution for \eqref{eq:mpcc}.
 \label{sec:mpcc:solution}
 The solution of MPCC~\eqref{eq:mpcc} has been widely studied since the 2000s.
 \emph{Direct methods} solves the problem~\eqref{eq:mpccnlp} directly using
-a SQP or an IPM algorithm~\cite{fletcher2006local}.
+a sequential quadratic programming (SQP) or an interior-point method (IPM)~\cite{fletcher2006local}.
 \emph{Regularization methods} relax the degenerate terms in \eqref{eq:mpccnlp}
 with a small parameter $\tau > 0$, such that the constraint $W_1 W_2 e \leq 0$
 is reformulated as $W_1 W_2 e \leq \tau$. We obtain the so-called Scholtes
@@ -826,7 +830,7 @@ opening the door for a fast factorization routine for \eqref{eq:newtonsystem}.
 
 
 \section{Numerical results}
-In this section, we test the performance of NCL algorithm on the SCOPF problem~\eqref{eq:scopf}.
+In this section, we test the performance of MadNCL on the AC-SCOPF problem~\eqref{eq:scopf}.
 The implementation is discussed in \S\ref{sec:numerics:implementation}. We present
 in \S\ref{sec:numerics:screening} how to perform the screening of the contingencies
 with MadNCL, and in \S\ref{sec:numerics:scopf} the performance obtained by MadNCL when
@@ -836,15 +840,14 @@ solving AC-SCOPF instances.
 \label{sec:numerics:implementation}
 
 MadNCL has been implemented in Julia 1.11, and uses the solver MadNLP to solve
-the subproblems~\eqref{eq:nclsubpb}. As a consequence, MadNCL runs both on the CPU or on the GPU.
-The implementation is described in \cite{montoison2025madncl},
+the subproblems~\eqref{eq:nclsubpb}. As a consequence, MadNCL runs both on the CPU or on the GPU \cite{shin2024accelerating}.
+The implementation is described in \cite{montoison2025madncl}
 and is available at this URL: \url{https://github.com/MadNLP/MadNCL.jl}.
 The CPU and GPU implementations of MadNCL are referred to as MadNCL-CPU and MadNCL-GPU, respectively.
 
-In terms of running time,
-the two bottlenecks in the algorithm are (i) the evaluation of the derivatives
-and (ii) the solution of the Newton system.
-On the one hand, we have implemented the problem \eqref{eq:scopf} with ExaModels~\cite{shin2024accelerating},
+In terms of running time, the two bottlenecks in MadNCL are (i) the evaluation of the derivatives
+and (ii) the solution of the Newton system~\eqref{eq:newtonsystem}.
+On the one hand, we have implemented the problem \eqref{eq:scopf} with ExaModels,
 a modeler that exploits the repeated structures in the model to evaluate it in parallel.
 We found that ExaModels is at least 10x faster than JuMP on the CPU~\cite{shin2024accelerating}.
 Furthermore, ExaModels supports
@@ -853,8 +856,8 @@ On the other hand, the Newton systems~\eqref{eq:newtonsystem} are solved with HS
 On the GPU, we use the linear solver NVIDIA cuDSS, implementing a signed Cholesky factorization.
 
 We compare MadNCL with the interior-point solver Knitro~\cite{waltz2006interior},
-running on the CPU with the linear solver HSL MA57. Knitro uses JuMP to evaluate the SCOPF model~\eqref{eq:scopf}
-and supports problems with complementarity constraints: it implements the $\ell_1$-exact penalty
+running on the CPU with the linear solver HSL MA57. Knitro evaluates the SCOPF model~\eqref{eq:scopf}
+with JuMP. Knitro supports problems with complementarity constraints and implements the $\ell_1$-exact penalty
 method described in \cite{leyffer2006interior}.
 As a contender in the GO-competition, the support of complementarity constraints in Knitro has
 been significantly improved in the recent years.
@@ -863,6 +866,8 @@ We use instances from the MATPOWER library~\cite{zimmerman2010matpower}.
 In the following experiments the processor is an AMD EPYC 7430.
 The GPU is a NVIDIA A30 with 24GB of device memory.
 We provide the code to reproduce the benchmark in this repository: \url{https://github.com/frapac/pscc-scopf}.
+In all our experiments, we set the convergence tolerance to {\tt tol=1e-6}.
+In MadNCL, we set the minimum barrier parameter to $\mu_{min} = 10^{-7}$ inside MadNLP's IPM algorithm.
 
 \subsection{Contingency screening}
 \label{sec:numerics:screening}
@@ -874,16 +879,16 @@ are \emph{structurally infeasible} (there is no base solution $u_0$ such that
 $k, l$, there is no $u_0$ such that the two associated problems~\eqref{eq:screening} are feasible).
 In that case, NCL falls back automatically to the feasibility problem~\eqref{eq:feaspb}
 by increasing the penalty $\rho^{(n)}$ to infinity. As a result, the algorithm returns the
-regularization $r$ that minimizes the constraint deviation (with guarantees in the convex case~\cite{chiche2016augmented}).
+regularization $r$ that minimizes the local infeasibility (with guarantees in the convex case~\cite{chiche2016augmented}).
 
-We assess the performance of MadNCL when scanning the contingencies in a network.
+We assess the performance of MadNCL when scanning the contingencies in a given network.
 We compute a base case solution $u_0$ by solving the AC OPF problem, and solve the
-system~\eqref{eq:screening} using MadNCL. It reformulates
+system~\eqref{eq:screening} using MadNCL. MadNCL reformulates
 the system~\eqref{eq:screening} as a feasibility problem~\eqref{eq:feaspb}.
 The final objective value quantifies the contingency's infeasibility: the closer to 0,
 the closer to feasibility. On the contrary, a large objective value indicates that the contingency is infeasible.
 We compare the average time to screen one line contingency in Table~\ref{tab:timecontingency}.
-Both Knitro and MadNCL solves the problem~\eqref{eq:screening} and run on the CPU using the linear solver HSL MA57. Knitro handles explicitly the complementarity constraints, whereas MadNCL
+Both Knitro and MadNCL solves the system~\eqref{eq:screening} and run on the CPU using the linear solver HSL MA57. Knitro handles explicitly the complementarity constraints, whereas MadNCL
 looks at the NLP~\eqref{eq:mpccnlp}. We observe that in term
 of computation time, MadNCL is at least 10 times faster than Knitro on the instances
 with more than 300 buses: MadNCL is able to detect
@@ -927,7 +932,7 @@ the classical OPF problem.}
 We are now in position to answer the main research question in this paper: is
 MadNCL effective at solving large-scale SCOPF on the GPU?
 We set up the following experiment.
-We compare Knitro and MadNCL running on the CPU (with HSL MA57) with MadNCL-GPU (using NVIDIA cuDSS).
+We compare Knitro and MadNCL-CPU (with HSL MA57) with MadNCL-GPU (using NVIDIA cuDSS).
 Knitro uses the modeler JuMP, which supports passing the complementarity constraints explicitly to the solver.
 On the contrary, MadNCL converts the JuMP model to ExaModels~\cite{shin2024accelerating} to benefit from faster evaluation
 of derivatives (in particular on the GPU). MadNCL solves the NLP reformulation~\eqref{eq:mpccnlp}.
@@ -975,16 +980,16 @@ to find a solution.}
 Second, we compare Knitro and MadNCL-GPU on different instances, with a varying number of contingencies $K$.
 The results are displayed in Table~\ref{tab:benchmark}.
 We observe that MadNCL-GPU is consistently faster than Knitro. As before in Table~\ref{tab:scopfscalability},
-we do not have any guarantee that Knitro converges to the same solution as MadNCL: in particular both algorithms
-return a different solution for {\tt ACTIVSg500} and {\tt 1354pegase}.
-More importantly, we notice that MadNCL is converging in significantly more iterations
+we do not have any guarantee that Knitro converges to the same solution as MadNCL: they
+report a different solution for {\tt 1354pegase} and {\tt 2869pegase}.
+We notice that MadNCL converges in significantly more iterations
 for {\tt ACTIVSg2000} and {\tt 2869pegase}. This points to MadNCL's main limitation:
 as we increase the problem's dimension, we increase the degeneracy in the indefinite linear system~\eqref{eq:newtonsystem}.
 As a result, the filter line-search algorithm used internally to solve the subproblem~\eqref{eq:nclsubpb} has to
-perform numerous primal-dual regularization during the inertia correction, significantly impairing MadNCL's convergence.
+perform numerous primal-dual regularization during the inertia correction, significantly impairing MadNCL's convergence (we have observed that the ill-conditioning arises mostly from the reformulation
+of \eqref{eq:pvpq}, when the reactive power lower-bound $\underline{q}_g$ is close to the upper-bound $\overline{q}_g$).
 For that reason, we have observed that MadNCL does not converge consistently on larger instances.
 We plan to address this issue in future work.
-
 
 
 % An example is shown in Table~\ref{table_example}.
@@ -999,6 +1004,18 @@ We plan to address this issue in future work.
 \input{tables.tex}
 \label{tab:benchmark}
 \end{table*}
+
+\section{Conclusion}
+
+In this article, we have studied the solution of large-scale AC-SCOPFs
+using MadNCL, a GPU-accelerated solver. As illustrated by Figure~\ref{fig:scalability},
+MadNCL is significantly faster on the GPU than a similar solver running on the CPU,
+with a time per iteration decreased by a factor of almost 40 on the largest instances.
+As a result, MadNCL can find in less than 3 minutes a strongly stationary solution for AC-SCOPFs with almost $10^6$ decision variables, allowing to tackle instances with thousands of buses and
+hundred of contingencies. In future work, we plan to move that threshold further:
+this would require addressing the ill-conditioning appearing inside the IPM's Newton systems,
+caused by the millions of complementarity constraints found in AC-SCOPF with
+more than 10,000 buses and 100 contingencies.
 
 % \subsection{Figures}
 % An example of a floating figure using the graphicx package.

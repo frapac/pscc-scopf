@@ -2,6 +2,7 @@
 using DelimitedFiles
 using MadNLP, MadNLPHSL
 using JuMP
+using KNITRO
 using NLPModels
 using ExaModels
 using MadNCL
@@ -27,6 +28,7 @@ function screen_madncl(cases, nK; tol=1e-6, max_cont=Inf)
 
     # Contingency
     for (i, case) in enumerate(cases)
+        @info case
         instance = joinpath(DATA_DIR, "$(case).m")
         # Base case
         model  = opf_model(instance)
@@ -78,28 +80,28 @@ function screen_knitro(cases, nK; tol=1e-6, max_cont=Inf)
 
     # Contingency
     for (i, case) in enumerate(cases)
+        @info case
         instance = joinpath(DATA_DIR, "$(case).m")
         # Base case
         model  = opf_model(instance)
         JuMP.set_optimizer(model, KNITRO.Optimizer)
-        JuMP.set_attribute(model, "outlev", 0)
+        # JuMP.set_attribute(model, "outlev", 0)
         JuMP.optimize!(model)
         base_case = extract_solution(model)
 
         # Scan nK first contingencies
         for k in 1:nK
             cnt_model = contingency_problem(instance, base_case, k; use_mpec=true)
-            JuMP.set_optimizer(model, KNITRO.Optimizer)
-            JuMP.set_attribute(model, "outlev", 0)
-            JuMP.set_optimizer_attribute(model, "maxit", 1000)
-            JuMP.optimize!(model)
+            JuMP.set_optimizer(cnt_model, KNITRO.Optimizer)
+            JuMP.set_optimizer_attribute(cnt_model, "maxit", 1000)
+            JuMP.optimize!(cnt_model)
 
             results[i, 1] = JuMP.num_variables(cnt_model)
             results[i, 2] = 0
             results[i, 3] += JuMP.is_solved_and_feasible(cnt_model)
-            results[k, 4] += MOI.get(model, MOI.BarrierIterations())
-            results[k, 5] += JuMP.objective_value(model)
-            results[k, 8] += JuMP.solve_time(model)
+            results[i, 4] += MOI.get(cnt_model, MOI.BarrierIterations())
+            results[i, 5] += JuMP.objective_value(cnt_model)
+            results[i, 8] += JuMP.solve_time(cnt_model)
         end
     end
     return [cases results]
@@ -108,11 +110,11 @@ end
 cases = [
     "case118",
     "case300",
-    # "case_ACTIVSg200",
-    # "case_ACTIVSg500",
-    # "case1354pegase",
-    # "case_ACTIVSg2000",
-    # "case2869pegase",
+    "case_ACTIVSg200",
+    "case_ACTIVSg500",
+    "case1354pegase",
+    "case_ACTIVSg2000",
+    "case2869pegase",
 ]
 nK = 10
-results = screen_madncl(cases, nK)
+results = screen_knitro(cases, nK)

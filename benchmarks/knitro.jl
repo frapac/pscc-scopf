@@ -11,12 +11,14 @@ include(joinpath(@__DIR__, "common.jl"))
 function benchmark_knitro()
     n = length(CASES)
 
-    results = zeros(n, 8)
+    results = zeros(n, 9)
     k = 1
 
     for (case, nK) in CASES
         println((case, nK))
-        contingencies = CONTINGENCIES[case][1:nK]
+        screen = readdlm(joinpath(@__DIR__, "..", "data", "screening", "$(case).txt"))
+        ind = sortperm(screen[:, 2])
+        contingencies = ind[1:nK]
 
         model = scopf_model(
             joinpath(DATA_DIR, "$(case).m"),
@@ -24,21 +26,21 @@ function benchmark_knitro()
             adjust=:mpecdroop,
             voltage_control=:pvpq,
             load_factor=1.0,
-            scale_cc=1e-4,
         )
         ind_cc1, ind_cc2 = parse_ccons!(model; reformulation=:mpec)
         JuMP.set_optimizer(model, KNITRO.Optimizer)
         JuMP.set_optimizer_attribute(model, "maxit", 1000)
         JuMP.optimize!(model)
 
-        results[k, 1] = JuMP.num_variables(model)
-        results[k, 2] = 0
-        results[k, 3] = Int(JuMP.is_solved_and_feasible(model))
-        results[k, 4] = MOI.get(model, MOI.BarrierIterations())
-        results[k, 5] = JuMP.objective_value(model)
-        results[k, 6] = 0.0
+        results[k, 1] = nK
+        results[k, 2] = JuMP.num_variables(model)
+        results[k, 3] = 0
+        results[k, 4] = Int(JuMP.is_solved_and_feasible(model))
+        results[k, 5] = MOI.get(model, MOI.BarrierIterations())
+        results[k, 6] = JuMP.objective_value(model)
         results[k, 7] = 0.0
-        results[k, 8] = JuMP.solve_time(model)
+        results[k, 8] = 0.0
+        results[k, 9] = JuMP.solve_time(model)
 
         k += 1
     end
@@ -47,6 +49,6 @@ function benchmark_knitro()
 end
 
 results = benchmark_knitro()
-writedlm(joinpath(@__DIR__, "..", "results", "scopf-knitro.csv"), results)
+writedlm(joinpath(@__DIR__, "..", "results", "scopf-knitro-2.csv"), results)
 
 

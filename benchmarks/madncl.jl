@@ -26,15 +26,18 @@ function benchmark_scopf(; options...)
             adjust=:mpecdroop,
             voltage_control=:pvpq,
             load_factor=1.0,
+            scale_cc=1.0,
+            tau_relax=1e-5,
         )
 
         nlp = ExaModels.ExaModel(model)
 
         ncl_options = MadNCL.NCLOptions{Float64}(;
-            opt_tol=1e-6,
-            feas_tol=1e-6,
+            opt_tol=1e-5,
+            feas_tol=1e-5,
             slack_reset=false,
-            scaling=false,
+            scaling=true,
+            scaling_max_gradient=100.0,
             extrapolation=true,
         )
 
@@ -64,11 +67,9 @@ results = benchmark_scopf(;
     linear_solver=Ma57Solver,
     richardson_tol=1e-12,
     richardson_max_iter=20,
-    ma57_pivtol=0.0,
-    ma57_automatic_scaling=true,
-    max_iter=500,
+    max_iter=1000,
     kkt_system=MadNCL.K2rAuglagKKTSystem,
 )
-writedlm(joinpath(@__DIR__, "..", "results", "scopf-madncl-k2r-ma57-scaling.csv"), results)
+writedlm(joinpath(@__DIR__, "..", "results", "scopf-madncl-k2r-ma57.csv"), results)
 
 

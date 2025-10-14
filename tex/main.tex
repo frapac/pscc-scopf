@@ -125,8 +125,9 @@
 %
 \usepackage[cmex10]{amsmath}
 \usepackage{amsfonts,amssymb,amsthm}
-\usepackage{cleveref}
 \usepackage{xspace}
+\usepackage[linktocpage=true,colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{cleveref}
 % A popular package from the American Mathematical Society that provides
 % many useful and powerful commands for dealing with mathematics. If using
 % it, be sure to load this package with the cmex10 option to ensure that
@@ -260,7 +261,7 @@
 
 % *** PDF, URL AND HYPERLINK PACKAGES ***
 %
-\usepackage{url}
+% \usepackage{url}
 % url.sty was written by Donald Arseneau. It provides better support for
 % handling and breaking URLs. url.sty is already installed on most LaTeX
 % systems. The latest version and documentation can be obtained at:
@@ -327,23 +328,24 @@ Augmented Lagrangian method on GPU for Security-Constrained AC Optimal Power Flo
 
 
 %% To specify the authors when (number of affiliations > 2)
-\author{\IEEEauthorblockN{Author n.1\IEEEauthorrefmark{1},
-Author n.2\IEEEauthorrefmark{2},
-Author n.3\IEEEauthorrefmark{3},
-Author n.4\IEEEauthorrefmark{3} and
-Author n.5\IEEEauthorrefmark{4}}
-\IEEEauthorblockA{\IEEEauthorrefmark{1} Department Name of Organization A\\
-Name of the organization A,
-Address A\\ Emails if wanted}
-\IEEEauthorblockA{\IEEEauthorrefmark{2} Department Name of Organization B\\
-Name of the organization B,
-Address B\\ Emails if wanted}
-\IEEEauthorblockA{\IEEEauthorrefmark{3} Department Name of Organization C\\
-Name of the organization C,
-Address C\\ Emails if wanted}
-\IEEEauthorblockA{\IEEEauthorrefmark{4}Department Name of Organization D\\
-Name of the organization D,
-Address D\\ Emails if wanted}
+\author{\IEEEauthorblockN{François Pacaud\IEEEauthorrefmark{1},
+Armin Nurkanović\IEEEauthorrefmark{2},
+Anton Pozharskiy \IEEEauthorrefmark{2},
+Alexis Montoison\IEEEauthorrefmark{3} and
+Sungho Shin\IEEEauthorrefmark{4}}
+\IEEEauthorblockA{\IEEEauthorrefmark{1} Centre Automatique et Systèmes\\
+Mines Paris-PSL,
+Paris, France\\ francois.pacaud@minesparis.psl.eu}
+\IEEEauthorblockA{\IEEEauthorrefmark{2}
+  Department of Microsystems Engineering (IMTEK) \\
+  University of Freiburg, Germany}
+\IEEEauthorblockA{\IEEEauthorrefmark{3} Mathematics and Computer Science Division \\
+Argonne National Laboratory,
+Lemont, IL, USA}
+\IEEEauthorblockA{\IEEEauthorrefmark{4}
+  Massachusetts Institute of Technology \\
+Cambridge, Massachusetts, USA
+}
 }
 
 
@@ -386,16 +388,15 @@ However, solving the AC-SCOPF with the original nonlinear formulation remains an
 and was the main motivation behind the GO competition recently orchestrated by the Federal Energy Regulatory Commission~\cite{aravena2023recent}.
 The issue with the nonlinear formulation is two-fold. First, the AC-SCOPF writes as a huge-scale
 nonlinear program, whose size is beyond the capacity of state-of-the-art nonlinear optimization solvers
-like Ipopt or Knitro~\cite{wachter2006implementation,waltz2006interior,capitanescu2011state}. Second, when incorporating recourse in the post-contingency state, the AC-SCOPF has to encode a set of logical conditions modeling the
-droop control and the PV/PQ switches.
-We can handle the logical conditions by introducing binary variables, at the
-price of obtaining a mixed-integer nonlinear program (MINLP) whose size becomes quickly intractable.
-Alternatively, the logical conditions can be formulated using complementarity constraints~\cite{baumrucker2008mpec},
-easier to handle in the large-scale regime. Complementarity constraints have been adopted early
+like Ipopt or Knitro~\cite{wachter2006implementation,waltz2006interior,capitanescu2011state}.
+Second, the complementarity constraints in the AC-SCOPF models are numerically
+difficult to handle, and a tailored algorithm must be employed.
+These complementarity constraints arise from the set of logical conditions
+modeling the droop control and the PV/PQ switches for the recourse in the post-contingency state.
+Complementarity constraints have been adopted early
 on in power system computation, both for power flow~\cite{zhao2008pv,sundaresh2014modified,murray2015robust} and for optimal power flow~\cite{rosehart2005optimal}.
-This second method has been adopted by some
-of the leading teams during the GO competition, as it integrates neatly with interior-point solvers
-\cite{curtis2023decomposition,gholami2023admm,petra2023surrogate}.
+The teams in the GO competition have found different methods to accommodate the
+complementarity conditions in the AC-SCOPF model~\cite{curtis2023decomposition,gholami2023admm,petra2023surrogate}.
 However, the AC-SCOPF reformulated with complementarity constraints yields a degenerate nonlinear program
 coming with its own issues.
 
@@ -403,7 +404,7 @@ coming with its own issues.
 
 There exists numerous algorithms to solve mathematical programs with complementarity constraints (MPCCs) \cite{nurkanovic2024}.
 For instance, the teams in the GO-competition has handled the complementarity constraints
-using active-set methods~\cite{curtis2023decomposition}, homotopy reformulations~\cite{gholami2023admm,petra2023surrogate} or a $\ell_1$-exact penalty reformulation~\cite{leyffer2006interior}.
+using active-set methods~\cite{curtis2023decomposition}, homotopy reformulations~\cite{gholami2023admm,petra2023surrogate} or an $\ell_1$-exact penalty reformulation~\cite{leyffer2006interior}.
 The large-scale nature of the SCOPF pushes algorithms to their boundary, as the number
 of complementarity constraints grows linearly with the number of contingencies.
 To address this challenge, we propose to solve the SCOPF with an augmented Lagrangian
@@ -419,21 +420,16 @@ the solution of large-scale optimal power flow (OPF) on the GPU with MadNLP~\cit
 
 % lien NCL two-stage ADMM
 
-
 \subsection{Scope and contributions}
-In this work, we analyze the performance of MadNCL on large-scale AC-SCOPF instances. In particular,
-\begin{itemize}
-  \item We present how MadNCL can perform the contingency screening and the solution
-    of the corrective AC-SCOPF.
-    To the best of our knowledge,
-    this is the first time an augmented Lagrangian-based algorithm is used to solve the corrective SCOPF formulated with complementarity constraints.
-  \item We show that MadNCL can accommodate well the complementarity constraints in the problem.
-    The algorithm is also effective at detecting infeasible problems, a useful feature for contingency screening.
-  \item We detail the implementation of MadNCL in Julia. On the GPU, MadNCL evaluates
-    the derivatives with ExaModels~\cite{shin2024accelerating} and solves the Newton systems with NVIDIA cuDSS.
-    We compare MadNCL with Artelys Knitro~\cite{waltz2006interior}, a state-of-the-art optimization
-    solver that also supports the solution of MPCCs~\cite{leyffer2006interior}.
-\end{itemize}
+In this work, we analyze the performance of MadNCL~\cite{montoison2025madncl}
+on large-scale AC-SCOPF instances formulated as MPCCs.
+To the best of our knowledge, this is the first time an augmented Lagrangian-based algorithm is used to solve the corrective SCOPF formulated with complementarity constraints. We present numerical
+experiments showing that MadNCL can accommodate well the complementarity constraints in the AC-SCOPF and
+is effective at detecting infeasible problems --- a useful feature for contingency screening.
+We detail how to deport the computation on the GPU for faster solution time.
+On the GPU, MadNCL evaluates the derivatives with ExaModels~\cite{shin2024accelerating} and solves the Newton systems with NVIDIA cuDSS.
+We compare MadNCL with Artelys Knitro~\cite{waltz2006interior}, a state-of-the-art optimization
+solver that supports the solution of MPCCs~\cite{leyffer2006interior}.
 
 
 \section{Model}
@@ -551,7 +547,7 @@ the equivalent MPCC in vertical form:
     \right.
   \end{aligned}
 \end{equation}
-with respectively
+with
 $w \in \mathbb{R}^n$ the variable aggregating the controls, states and slack variables
 and $c: \mathbb{R}^n \to \mathbb{R}^m$ a function aggregating all the equality and inequality constraints
 in \eqref{eq:scopf}.
@@ -591,9 +587,9 @@ by classical nonlinear programming solvers.
 \subsection{First order stationary conditions}
 \label{sec:mpcc:stationary}
 We note the feasible set of \eqref{eq:mpcc} as
-\begin{equation}
+\begin{equation*}
   \Omega = \{ w \in \mathbb{R}^n \; | \; c(w) = 0 \, , w_0 \geq 0 \; ,\; 0 \leq w_1 \perp w_2 \geq 0 \} \; .
-\end{equation}
+\end{equation*}
 For any feasible point $w \in \Omega$, we define the index sets
 \begin{equation}
   \begin{aligned}
@@ -665,8 +661,8 @@ method converges to a strongly stationary solution $x \in \Omega$ if MPCC-LICQ h
 and the sequence of multiplier estimates $\{\nu_0^n\}_n$ generated by the algorithm
 has a bounded subsequence (this prevents the algorithm to converge to a spurious solution).
 NCL operates at two level: it updates the penalty $\rho^{(n)}$
-and the two multiplier estimates $(\lambda^{(n)}, \nu_0^{(n)}) \in \mathbb{R}^m \times \mathbb{R}^p$ in the \emph{outer iterations}, whereas the \emph{innner iterations}
-solves the nonlinear program associated to NCL's subproblem:
+and the two multiplier estimates $(\lambda^{(n)}, \nu_0^{(n)}) \in \mathbb{R}^m \times \mathbb{R}^p$ in the \emph{outer iterations}, whereas the \emph{inner iterations}
+solves the constrained nonlinear subproblem:
 \begin{equation}
   \label{eq:nclsubpb}
   \begin{aligned}
@@ -676,47 +672,42 @@ solves the nonlinear program associated to NCL's subproblem:
   \end{aligned}
 \end{equation}
 with
-\begin{equation}
-  \begin{aligned}
-    \mathcal{L}_\rho(w, r, t, \lambda^{(n)}, \nu^{(n)}_0) =  \\
-    \phi(w) + (\lambda^{(n)})^\top r & + (\nu_0^{(n)})^\top t +  \frac{\rho^{(n)}}{2}(\|r \|^2 + \|t\|^2) \; ,
-  \end{aligned}
-\end{equation}
-with $(r, t) \in \mathbb{R}^m \times \mathbb{R}^p$ two regularization variables.
+$\mathcal{L}_\rho(w, r, t, \lambda^{(n)}, \nu^{(n)}_0) =  \phi(w) + (\lambda^{(n)})^\top r  + (\nu_0^{(n)})^\top t +  \frac{\rho^{(n)}}{2}(\|r \|^2 + \|t\|^2)$
+and $(r, t) \in \mathbb{R}^m \times \mathbb{R}^p$ two regularization variables.
 The subproblem~\eqref{eq:nclsubpb} is always feasible.
 We emphasize that NCL treats \eqref{eq:mpccnlp} as a generic nonlinear program, and does not
-apply any special treatment to the complementarity constraints.
+apply any special treatment to the complementarity constraints. The regularization
+$t$ plays the role of the Scholtes relaxation parameter (see \S\ref{sec:mpcc:solution})
+and is penalized in the objective by the Augmented Lagrangian penalty.
 
-\paragraph{Inner iterations}
 At a given outer iteration $n$, NCL solves the subproblem \eqref{eq:nclsubpb}
 with an interior-point method (IPM), up to a given tolerance $\omega^{(n)}$.
 Only the objective changes between two successive outer iterations, hence the IPM
 can be efficiently warmstarted from the previous primal-dual solution.
-An extrapolation step can be used to skip the inner iterations once we are close to a
-stationary solution, allowing the algorithm to recover a superlinear convergence rate \cite{montoison2025madncl}.
-
-\paragraph{Outer iterations}
 Once the subproblem~\eqref{eq:nclsubpb} solved, we update the augmented Lagrangian
 parameters $(\rho^{(n)}, \lambda^{(n)}, \nu_0^{(n)})$ using the solution $(x^{n+1}, r^{n+1}, t^{n+1})$
-and proceed to the next outer iteration. For a given forcing sequence $\{\eta^{(n)}\}_n$, NCL uses the classical updates:
-\begin{itemize}
-  \item If $\|(r^{(n+1)}, t^{(n+1)})\|_\infty \leq \eta^{(n)}$, then
-    \begin{equation*}
-      \begin{aligned}
-      & \lambda^{(n+1)} = \lambda^{(n)} + \rho^{(n)} r^{(n+1)} \; , \\
-      & \nu_0^{(n+1)} = \nu_0^{(n)} + \rho^{(n)} t^{(n+1)} \; , \\
-      & \rho^{(n+1)} = \rho^{(n)} \; .
-      \end{aligned}
-    \end{equation*}
-  \item Otherwise, set
-    \begin{equation*}
-      \lambda^{(n+1)} = \lambda^{(n)} \; , \;
-      \nu_0^{(n+1)} = \nu_0^{(n)} \; , \;
-      \rho^{(n+1)} = 10 \rho^{(n)} \; .
-    \end{equation*}
-\end{itemize}
+and proceed to the next outer iteration. We refer to \cite{montoison2025madncl} for a comprehensive
+description of the algorithm.
 
-If the problem is infeasible, NCL converges to a stationary solution of the \emph{feasibility problem}:
+% For a given forcing sequence $\{\eta^{(n)}\}_n$, NCL uses the classical updates:
+% \begin{itemize}
+%   \item If $\|(r^{(n+1)}, t^{(n+1)})\|_\infty \leq \eta^{(n)}$, then
+%     \begin{equation*}
+%       \begin{aligned}
+%       & (\lambda^{(n+1)}, \nu_0^{(n+1)}) = (\lambda^{(n)}, \nu_0^{(n)}) + \rho^{(n)} (r^{(n+1)}, t^{(n+1)}) \; ,\\
+%       & \rho^{(n+1)} = \rho^{(n)} \; .
+%       \end{aligned}
+%     \end{equation*}
+%   \item Otherwise, set
+%     \begin{equation*}
+%       \lambda^{(n+1)} = \lambda^{(n)} \; , \;
+%       \nu_0^{(n+1)} = \nu_0^{(n)} \; , \;
+%       \rho^{(n+1)} = 10 \rho^{(n)} \; .
+%     \end{equation*}
+% \end{itemize}
+
+If the problem is infeasible, the penalty $\rho^{(n)}$ diverges to $+\infty$
+and NCL iterates are converging to a stationary solution of the \emph{feasibility problem}:
 \begin{equation}
   \label{eq:feaspb}
   \begin{aligned}
@@ -776,16 +767,16 @@ algorithm \cite{wachter2006implementation}. At each IPM iteration, the Newton sy
 for $\Delta y = (\Delta \lambda, \Delta \nu_0)$ the update for the multipliers,
 $(r_1, r_2)$ an appropriate right-hand-side set by the IPM.
 The matrix $A$ is defined for $H = \nabla^2_{ww} \mathcal{L}(w, r, t, \lambda,\nu)$:
-\begin{equation}
+\begin{equation*}
   \label{eq:blockA}
   A = \begin{bmatrix}
     H_{00} + W_0^{-1} \Xi & H_{01} & H_{02} \\
     H_{10} & H_{11} + W_1^{-1} V_1 & H_{12} + V_0 \\
     H_{20} & H_{21} + V_0 & H_{22} + W_2^{-1} V_2
   \end{bmatrix} \; ,
-\end{equation}
+\end{equation*}
 and with the Jacobian and regularization terms:
-\begin{equation}
+\begin{equation*}
   \label{eq:blockBC}
   B = \begin{bmatrix}
     J_0 & J_1 & J_2 \\
@@ -795,17 +786,17 @@ and with the Jacobian and regularization terms:
     \rho^{-1} I &   \\
     & \rho^{-1} I + V_0^{-1} S
     \end{bmatrix} \; .
-\end{equation}
+\end{equation*}
 Once the system~\eqref{eq:newtonsystem} solved, the remaining
 descent directions are recovered as
-\begin{equation}
+\begin{equation*}
   \begin{aligned}
     & \Delta s = V_0^{-1} S (r_4 - \Delta \nu_0) \; , \\
     & \Delta \nu_i = W_i^{-1} (r_i - V_i \Delta w_i)\;,   & i = 1,2 \; , \\
     & \Delta r = \rho^{-1} (r_5 - \Delta \lambda) \; ,\\
     & \Delta t = \rho^{-1} (r_6 - \Delta \nu_0) \; .\\
   \end{aligned}
-\end{equation}
+\end{equation*}
 
 The Newton system~\eqref{eq:newtonsystem} reflects the structure of
 the problem~\eqref{eq:nclsubpb}. Compared to a classical IPM method, the
@@ -847,7 +838,7 @@ solving AC-SCOPF instances.
 MadNCL has been implemented in Julia 1.11, and uses the solver MadNLP to solve
 the subproblems~\eqref{eq:nclsubpb}. As a consequence, MadNCL runs both on the CPU or on the GPU.
 The implementation is described in \cite{montoison2025madncl},
-and is available at this URL: \url{github.com/MadNLP/MadNCL.jl}.
+and is available at this URL: \url{https://github.com/MadNLP/MadNCL.jl}.
 The CPU and GPU implementations of MadNCL are referred to as MadNCL-CPU and MadNCL-GPU, respectively.
 
 In terms of running time,
@@ -855,7 +846,8 @@ the two bottlenecks in the algorithm are (i) the evaluation of the derivatives
 and (ii) the solution of the Newton system.
 On the one hand, we have implemented the problem \eqref{eq:scopf} with ExaModels~\cite{shin2024accelerating},
 a modeler that exploits the repeated structures in the model to evaluate it in parallel.
-We found that ExaModels is at least 10x faster than JuMP on the CPU. Furthermore, ExaModels supports
+We found that ExaModels is at least 10x faster than JuMP on the CPU~\cite{shin2024accelerating}.
+Furthermore, ExaModels supports
 the evaluation of the derivatives on the GPU, which gives us an additional speed-up factor.
 On the other hand, the Newton systems~\eqref{eq:newtonsystem} are solved with HSL MA57 on the CPU.
 On the GPU, we use the linear solver NVIDIA cuDSS, implementing a signed Cholesky factorization.
@@ -870,7 +862,7 @@ been significantly improved in the recent years.
 We use instances from the MATPOWER library~\cite{zimmerman2010matpower}.
 In the following experiments the processor is an AMD EPYC 7430.
 The GPU is a NVIDIA A30 with 24GB of device memory.
-We provide the code to reproduce the benchmark in this repository: \url{github.com/frapac/pscc-scopf}.
+We provide the code to reproduce the benchmark in this repository: \url{https://github.com/frapac/pscc-scopf}.
 
 \subsection{Contingency screening}
 \label{sec:numerics:screening}
@@ -893,8 +885,9 @@ the closer to feasibility. On the contrary, a large objective value indicates th
 We compare the average time to screen one line contingency in Table~\ref{tab:timecontingency}.
 Both Knitro and MadNCL solves the problem~\eqref{eq:screening} and run on the CPU using the linear solver HSL MA57. Knitro handles explicitly the complementarity constraints, whereas MadNCL
 looks at the NLP~\eqref{eq:mpccnlp}. We observe that in term
-of computation time, MadNCL is 10 times faster than Knitro. MadNCL is able to detect
-infeasible problems (a common occurence in contingency screening) much faster than
+of computation time, MadNCL is at least 10 times faster than Knitro on the instances
+with more than 300 buses: MadNCL is able to detect
+infeasible problems (a common occurrence in contingency screening) much faster than
 the algorithm implemented in Knitro.
 In Figure~\ref{fig:contingency}, we scan all the line contingencies for
 the instance {\tt ACTIVSg500} and we order them by level of infeasibility (as measured
@@ -902,7 +895,7 @@ by the final objective returned by MadNCL).
 
 \begin{table}[!ht]
 \centering
-\caption{Average time to scan a contingency (in seconds) for different instances.}
+\caption{Average time to scan one contingency (in seconds) for different instances.}
 \begin{tabular}{|r|rr|}
   \hline
   Case  & Knitro (s) & MadNCL-CPU (s) \\

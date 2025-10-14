@@ -307,7 +307,7 @@
 
 \begin{document}
 \title{
-Augmented Lagrangian method on GPU for Security-Constrained AC Optimal Power Flow
+An Augmented Lagrangian Method on GPU for Security-Constrained AC Optimal Power Flow
 }
 
 
@@ -355,7 +355,7 @@ Cambridge, Massachusetts, USA
 % As a general rule, do not put math, special symbols or citations
 % in the abstract
 \begin{abstract}
-  We present a new algorithm for solving large-scale security-constrained optimal power flow in polar form (AC-SCOPF). The method builds on Algorithm Nonlinearly Constrained augmented Lagrangian (NCL), an augmented Lagrangian method in which the subproblems are solved using an interior-point method. NCL has two key advantages for large-scale SC-OPF. First, NCL handles difficult problems such as infeasible ones or models with complementarity constraints. Second, the augmented Lagrangian term naturally regularizes the Newton linear systems within the interior-point method, enabling to solve the Newton systems with a pivoting-free factorization that can be efficiently parallelized on GPUs.
+  We present a new algorithm for solving large-scale security-constrained optimal power flow in polar form (AC-SCOPF). The method builds on Nonlinearly Constrained augmented Lagrangian (NCL), an augmented Lagrangian method in which the subproblems are solved using an interior-point method. NCL has two key advantages for large-scale SC-OPF. First, NCL handles difficult problems such as infeasible ones or models with complementarity constraints. Second, the augmented Lagrangian term naturally regularizes the Newton linear systems within the interior-point method, enabling to solve the Newton systems with a pivoting-free factorization that can be efficiently parallelized on GPUs.
   We assess the performance of our implementation, called MadNCL, on large-scale corrective AC-SCOPFs, with complementarity constraints modeling the corrective actions. Numerical results show that MadNCL
   can solve AC-SCOPF with 500 buses and 256 contingencies
   fully on the GPU in less than 3 minutes, whereas Knitro takes more than 3 hours
@@ -489,7 +489,7 @@ for $\nu_{b-}^k \geq 0$ and $\nu_{b+}^k \geq 0$,
 As a result, the corrective SCOPF modeling the recourse with \eqref{eq:droopmpec}
 and \eqref{eq:pvpq} writes as a nonlinear program with complementarity
 constraints. We note that the MPCC formulation has been adopted throughout the GO
-competition, and is described in length in \cite{aravena2023recent,curtis2023decomposition,gholami2023admm}.
+competition, and is described at length in \cite{aravena2023recent,curtis2023decomposition,gholami2023admm}.
 
 \subsection{AC-SCOPF}
 We adapt the formulation of the AC-SCOPF used in \cite{frank2016introduction} to include the complementarity
@@ -629,7 +629,8 @@ multipliers $(\lambda, \mu) \in \mathbb{R}^m \times \mathbb{R}^{2p}$ such that
 \end{equation}
 We note that the conditions
 \eqref{eq:strongstationarity} are the KKT stationary solution of a relaxed nonlinear program~\cite{scheel2000mathematical} with no complementarity constraint.
-We say that MPCC-LICQ holds at $x \in \Omega$ if this relaxed nonlinear program itself satisfies LICQ.
+If the relaxed nonlinear program satisfies Linear Independence Constraint Qualification (LICQ),
+we say that MPCC-LICQ holds at $x \in \Omega$.
 Our goal is to find a strong stationary solution for \eqref{eq:mpcc}.
 % Every $w \in \Omega$ satisfying strong stationarity satisfies Bouligand stationarity~\cite{scheel2000mathematical}, with equivalence if MPCC-LICQ holds.
 
@@ -642,7 +643,7 @@ a sequential quadratic programming (SQP) or an interior-point method (IPM)~\cite
 \emph{Regularization methods} relax the degenerate terms in \eqref{eq:mpccnlp}
 with a small parameter $\tau > 0$, such that the constraint $W_1 W_2 e \leq 0$
 is reformulated as $W_1 W_2 e \leq \tau$. We obtain the so-called Scholtes
-relaxation~\cite{scholtes2001convergence}: by driving the term $t$ to $0$ we recover the solution of the original MPCC~\eqref{eq:mpcc}.
+relaxation~\cite{scholtes2001convergence}: by driving the term $\tau$ to $0$ we recover the solution of the original MPCC~\eqref{eq:mpcc}.
 % This is the method implemented in Ipopt-C~\cite{raghunathan2005interior}.
 \emph{Penalty-based methods} use a $\ell_1$-exact penalty to penalize the complementarity
 constraints in the objective by adding a term $\tau w_1^\top w_2$, with a large-enough penalty $\tau >0$.
@@ -842,7 +843,7 @@ solving AC-SCOPF instances.
 MadNCL has been implemented in Julia 1.11, and uses the solver MadNLP to solve
 the subproblems~\eqref{eq:nclsubpb}. As a consequence, MadNCL runs both on the CPU or on the GPU \cite{shin2024accelerating}.
 The implementation is described in \cite{montoison2025madncl}
-and is available at this URL: \url{https://github.com/MadNLP/MadNCL.jl}.
+and is available at this URL: \url{github.com/MadNLP/MadNCL.jl}.
 The CPU and GPU implementations of MadNCL are referred to as MadNCL-CPU and MadNCL-GPU, respectively.
 
 In terms of running time, the two bottlenecks in MadNCL are (i) the evaluation of the derivatives
@@ -865,7 +866,7 @@ been significantly improved in the recent years.
 We use instances from the MATPOWER library~\cite{zimmerman2010matpower}.
 In the following experiments the processor is an AMD EPYC 7430.
 The GPU is a NVIDIA A30 with 24GB of device memory.
-We provide the code to reproduce the benchmark in this repository: \url{https://github.com/frapac/pscc-scopf}.
+We provide the code to reproduce the benchmark in this repository: \url{github.com/frapac/pscc-scopf}.
 In all our experiments, we set the convergence tolerance to {\tt tol=1e-6}.
 In MadNCL, we set the minimum barrier parameter to $\mu_{min} = 10^{-7}$ inside MadNLP's IPM algorithm.
 

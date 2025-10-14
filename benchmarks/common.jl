@@ -1,7 +1,7 @@
 
 include(joinpath(@__DIR__, "..", "data", "contingencies.jl"))
 
-DATA_DIR = "/home/fpacaud/dev/matpower/data/"
+DATA_DIR = joinpath(artifact"PGLib_opf", "pglib-opf-23.07")
 
 CASES = [
     ("case118", 100),
@@ -20,4 +20,3 @@ CASES = [
     ("case2869pegase", 8),
     ("case2869pegase", 16),
 ]
-

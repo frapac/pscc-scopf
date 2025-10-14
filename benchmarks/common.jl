@@ -1,7 +1,8 @@
+using LazyArtifacts
 
 include(joinpath(@__DIR__, "..", "data", "contingencies.jl"))
 
-DATA_DIR = joinpath(artifact"PGLib_opf", "pglib-opf-23.07")
+DATA_DIR = joinpath(artifact"ExaData", "ExaData")
 
 CASES = [
     ("case118", 100),

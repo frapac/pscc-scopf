@@ -9,7 +9,7 @@ using ExaModels
 using MadNLPGPU
 using CUDA
 
-CUDA.device!(1)
+CUDA.device!(0)
 
 include(joinpath(@__DIR__, "..", "models", "scopf.jl"))
 include(joinpath(@__DIR__, "..", "scripts", "utils.jl"))
@@ -47,7 +47,7 @@ function benchmark_scopf(; options...)
         ncl_options = MadNCL.NCLOptions{Float64}(;
             opt_tol=1e-5,
             feas_tol=1e-5,
-            slack_reset=false,
+            # slack_reset=false,
             scaling_max_gradient=100.0,
             scaling=true,
             mu_min=1e-7,
@@ -87,5 +87,3 @@ results = benchmark_scopf(;
     kkt_system=MadNCL.K2rAuglagKKTSystem,
 )
 writedlm(joinpath(@__DIR__, "..", "results", "scopf-madncl-k2r-cudss.csv"), results)
-
-

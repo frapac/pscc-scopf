@@ -16,9 +16,7 @@ function benchmark_knitro()
 
     for (case, nK) in CASES
         println((case, nK))
-        screen = readdlm(joinpath(@__DIR__, "..", "data", "screening", "$(case).txt"))
-        ind = sortperm(screen[:, 2])
-        contingencies = ind[1:nK]
+        contingencies = CONTINGENCIES[case][1:nK]
 
         model = scopf_model(
             joinpath(DATA_DIR, "$(case).m"),

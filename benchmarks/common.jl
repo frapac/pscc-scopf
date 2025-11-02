@@ -1,7 +1,8 @@
+using LazyArtifacts
 
 include(joinpath(@__DIR__, "..", "data", "contingencies.jl"))
 
-DATA_DIR = "/home/fpacaud/dev/matpower/data/"
+DATA_DIR = joinpath(artifact"ExaData", "ExaData")
 
 CASES = [
     ("case118", 100),
@@ -20,4 +21,3 @@ CASES = [
     ("case2869pegase", 8),
     ("case2869pegase", 16),
 ]
-

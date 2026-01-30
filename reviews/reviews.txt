@@ -1,0 +1,56 @@
+
+Editor comments:  
+
+
+Editor's comments: The reviewers were positive overall in their comments for this paper. I am particularly impressed by the strong numeric performance relative to the commercial solver Knitro on a practically relevant problem from the ARPA-E Grid Optimization competition. The paper could be improved by providing more detail and background information (even at the cost of additional pages as needed) in an effort to make the paper self contained rather than reliant on the team's prior publications to understand key details. I would also suggest further numeric comparison to identify the improvements from using JuMP vs. ExaModels relative to other improvements. In other words, I would suggest providing numeric results with MadNCL-CPU+ExaModels vs. MadNCL-CPU+JuMP to show how much impact is due to the modeling language improvements alone.
+
+Reviewer #1: This paper proposes a GPU-friendly approach for large-scale AC-SCOPFs. The research topic is interesting, and this reviewer has the following issues:
+
+1. The manuscript states that formulation (8) is equivalent to the MPCC formulation (6), yet this equivalence is not explained. In particular, the complementarity condition in (6) implies (w_1w_2 = 0), but this product condition does not explicitly appear in (8).
+
+2. The technical description for Section IV needs to be improved significantly.
+- The definitions of the index sets are confusing between (10) and (11). For example, in (10), the set L+0 is defined for indices where w_{1,i} > 0. However, the conditions in (11) apply w_{1,i} => 0 for this set.
+- The derivation of the subproblem (12) is insufficiently explained. The roles of the regularization variables (r) and (t) are unclear: Are they required to be nonnegative? Why does the augmented Lagrangian objective penalize only certain variables, and what is the conceptual meaning of solving (12)?
+- The update rule for the penalty parameter (\rho) is not specified. Also, the text mentions updating (\rho) "using (x, r, t)," but the variable (x) is not defined in this context.
+- In general, it is unclear whether the proposed method is guaranteed to converge to a strongly stationary point of the MPCC. If a convergence guarantee exists, the authors should explain why. If not, they should clarify why this method is still appropriate beyond its GPU friendly structure.
+
+3. The paper briefly mentions the signed Cholesky factorization and MadNLP, but these concepts need additional context. A brief technical explanation of the signed Cholesky factorization and how MadNLP differs from standard interior-point solvers would be beneficial for the audience, particularly regarding how it handles indefinite systems without pivoting.
+
+4. For Section V,
+- The comparison between MadNCL and Knitro should include detailed constraint violation information for all equality and inequality constraints, not only objective values and runtimes.
+- The authors should also provide constraint violation comparisons between Knitro and the version of MadNLP that uses the signed Cholesky based Newton system. Does this solver satisfy all constraints to the same accuracy as Knitro? The current manuscript does not make this clear.
+
+
+
+
+Reviewer #2: This paper poses a security-constrained AC-OPF problem as an MPCC problem. The authors then solve the MPCC problem on GPUs, and they compare their solutions and solutions times to Knitro in JuMP. This is an excellent paper with compelling test results. The paper would be stronger if the authors motivated the use of the MPCC framework more strongly (e.g., contrasting it to a direct MINLP approach). Also, the Newton step analysis is hard to follow. For example, why are the bilinear terms V0 contributing to indefiniteness of the full matrix, but not affecting the definiteness of the reduced matrix? Other comments follow.
+
+- The formulation in (8) with W1W2e \le 0 is initially hard to interpret: the authors should motivate the reason for forcing this term non-positive (i.e., rather than to 0).
+- Can the authors comment on the condition number of the Newton system as a function of \rho for a typical ACOPF problem?
+- It is surprising that Knitro generally needs more, rather than fewer, iterations to converge, enough though the Augmented Lagrangian method introduces a penalty approximation.
+- Why does MadNCL-CPU need MORE iterations than MadNCL-GPU? I would expect pivoting on the CPU to help, not hurt!
+
+
+Reviewer #3: Security-constrained optimal power flow (OPF) is an important problem for ensuring reliable operations of the power grid. The problem searches for optimal generation dispatch decisions that permits feasible operation in the event of an outage to some grid equipment. Recent efforts, including Challenge 1 of the Grid Optimization (GO) Competition, have emphasized increased realism in post-contingency operational models when solving large scale systems.
+
+This work adopts a contingency model, proposed in GO Challenge 1, where generators adapt their power output in response to observations of the grid voltage and frequency (i.e., voltage control and droop control). This model is more detailed and more complex than the typical style of security constraints considered in OPF problems. The problem is reformulated with complementarity constraints and solved with an augmented Lagrangian method (ALM). The ALM is an iterative method that introduces regularization to the nonlinear subproblems; the regularization improves the numerical behavior of the systems which appear and allows the use of GPU acceleration. Numerical experiments exhibit the potential speedup of this approach (driven both by algorithmic development and GPU acceleration).
+
+The main contributions of this work are the reformulation of the security constraints as complementarity constraints, the connection of the reformulated problem to this style of ALM that is compatible with GPU computation, and the numerical experiments which demonstrate the benefits of the method.
+
+Overall, the work is clearly presented, studies a relevant problem, and gives straightforward and meaningful conclusions. I recommend that the work focus more on the SC-OPF setting with computational experiments. Specifically, some computational results should be shown on the datasets from Challenge 1 of the GO Competition, which were specifically designed to highlight this contingency model. With the understanding that the penalization in the GO model may allow for infeasible contingencies, some sort of screening can be used to ensure feasibility. Methods submitted to the GO competition were able to solve cases with >20,000 buses in under 10 minutes (see "Recent Developments in Security-Constrained AC Optimal Power Flow: Overview of Challenge 1 in the ARPA-E Grid Optimization Competition"). The results presented in this work show cases with <3,000 buses and a GPU-accelerated time under 5 minutes. It would be helpful to push the size and runtimes on which this method is evaluated closer to the frontier of the GO competition, and also include some discussion on why performance may not be competitive to leading algorithms from the competition (less decomposition, heuristics, prescreening, etc.)
+
+On the other hand, the description of strong stationarity in section III.B and the Lagrangians (7), (9) in section III.A do not seem vital to the exposition of the ALM. I recommend reducing this notation and providing a simpler (or text-based) description of strong stationarity, if needed to characterize the quality of the final solution.
+
+I also have significant questions about the contingency screening process. Section V.C suggests that contingencies are selected using the prescreening evaluation in Section V.B. Here, it is not clear whether the contingencies with low infeasibility or high infeasibility are selected. If high infeasibility contingencies are selected (then screened for structural feasibility), this should be clarified. However, if low infeasibility cases are selected, this makes the problem much easier. As the prescreening is around a base-case optimal solution, if contingencies with no infeasibility at this solution are added, the optimal solution to SC-OPF will be the base-case optimal solution (because the contingency constraints are not binding at this solution). Especially as the numerical results show that the optimal objectives do not change much as contingencies are added, it seems plausible that the low infeasibility screening method is being used. If so, the screening method needs to be changed to ensure that the results generalize to cases with binding contingencies.
+
+Other minor comments are as follows:
+
+1. In the introduction to Section II, provide more detail about the considerations and constraints in the base-case AC OPF model (line flow, line limits, operational bounds…), and how the base case connects to the contingencies.
+2. When discussing the MFCQ, more detail is needed. I understand from the literature that MFCQ is never satisfied for problems with complementarity constraints (e.g., from Nonsmooth Approach to Optimization Problems with Equilibrium Constraints), however, this is due to the behavior of constraint gradients, not violation of strict feasibility. This discussion should be revised, and maybe include a relevant citation.
+3. As mentioned above, in III.B, I believe much of this notation can be removed or reduced. Additionally, (11) seems to require that (w1,w2) \geq 0, as otherwise the sets \mathcal{I} may not cover the whole index set.
+4. In Section IV.A, the presentation of outer and inner iterations is unclear. At each outer iteration, (12) is solved, and the inner iterations are IPM steps to solve this problem. Please clarify to this end.
+5. In IV.A, it would be helpful to give some detail about how the Lagrangian penalty parameters are updated.
+6. I understand that, even if the problem (6) is feasible, the method may still generate an infeasible solution or diverging set of penalty parameters, perhaps depending on the solution to (12). If this is the case, it would be helpful to state so after the discussion of the behavior in the infeasible case (around eq. 13); if this is not correct, please explain that property in this section.
+7. See above for concerns about the contingency screening process for instance generation.
+8. In JuMP, symbolic autodifferentiation (using MathOptSymbolicAD.DefaultBackend() or similar) can show speedup on derivative computation for some large structured problems. If you are not already using this, it may be helpful to close the gap between ExaModels and JuMP, even though it may not feature the same level of parallelization.
+ 

@@ -24,7 +24,7 @@ function goc1_model(
     tau_relax = 1e-5,
     load_factor = 1.0,
     reg_l1=true,
-    use_mepc=false,
+    use_mpec=false,
 )
     ref = goc1_data(instance, scenario)
 

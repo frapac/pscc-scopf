@@ -24,6 +24,7 @@ function goc1_model(
     tau_relax = 1e-5,
     load_factor = 1.0,
     reg_l1=true,
+    use_mepc=false,
 )
     ref = goc1_data(instance, scenario)
 
@@ -122,8 +123,13 @@ function goc1_model(
         for (j, i) in enumerate(keys(ref[:gen]))
             pmin, pmax = ref[:gen][i]["pmin"], ref[:gen][i]["pmax"]
             @constraint(model, ρp[i, k] - ρn[i, k] == pg[i, k] - pg[i, 1] - alpha[j] * Δ[k-1])
-            @constraint(model, ρn[i, k] * (pmax - pg[i, k]) <= tau_relax)
-            @constraint(model, ρp[i, k] * (pg[i, k] - pmin) <= tau_relax)
+            if use_mpec
+                @constraint(model, [(pmax - pg[i, k]), ρn[i, k]] in MOI.Complements(2))
+                @constraint(model, [(pg[i, k] - pmin), ρp[i, k]] in MOI.Complements(2))
+            else
+                @constraint(model, ρn[i, k] * (pmax - pg[i, k]) <= tau_relax)
+                @constraint(model, ρp[i, k] * (pg[i, k] - pmin) <= tau_relax)
+            end
         end
         # Voltage magnitude are not adjusted at PV buses
         for g in keys(ref[:gen])
@@ -131,10 +137,18 @@ function goc1_model(
             qmin, qmax = ref[:gen][g]["qmin"], ref[:gen][g]["qmax"]
             @constraint(model, vp[g, k] - vn[g, k] == vm[b, k] - vm[b, 1])
             if isfinite(qmax)
-                @constraint(model, vn[g, k] * (qmax - qg[g, k]) <= tau_relax)
+                if use_mpec
+                    @constraint(model, [(qmax - qg[g, k]), vn[g, k]] in MOI.Complements(2))
+                else
+                    @constraint(model, vn[g, k] * (qmax - qg[g, k]) <= tau_relax)
+                end
             end
             if isfinite(qmin)
-                @constraint(model, vp[g, k] * (qg[g, k] - qmin) <= tau_relax)
+                if use_mpec
+                    @constraint(model, [(qg[g, k] - qmin), vp[g, k]] in MOI.Complements(2))
+                else
+                    @constraint(model, vp[g, k] * (qg[g, k] - qmin) <= tau_relax)
+                end
             end
         end
         # Set flux to 0

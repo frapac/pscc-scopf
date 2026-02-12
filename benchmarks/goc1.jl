@@ -4,6 +4,7 @@ using JuMP
 using NLPModels
 using MadNLP, MadNLPHSL
 using MadNLPGPU
+using CUDA
 using MadNCL
 using ExaModels
 using KNITRO
@@ -32,11 +33,12 @@ end
 function benchmark_knitro(dataset)
     instances = parse_dataset(dataset)
     n = length(instances)
+    contingencies = [10, 50]
 
-    results = zeros(n, 9)
+    results = zeros(n * length(contingencies), 8)
     k = 1
 
-    for (case, scenario) in instances, nK in [10, 50, 100]
+    for (case, scenario) in instances, nK in contingencies
         model = goc1_model(
             joinpath(dataset, case),
             scenario,
@@ -53,28 +55,31 @@ function benchmark_knitro(dataset)
 
         results[k, 1] = nK
         results[k, 2] = JuMP.num_variables(model)
-        results[k, 3] = 0
-        results[k, 4] = Int(JuMP.is_solved_and_feasible(model))
-        results[k, 5] = MOI.get(model, MOI.BarrierIterations())
-        results[k, 6] = JuMP.objective_value(model)
+        results[k, 3] = Int(JuMP.is_solved_and_feasible(model))
+        results[k, 4] = MOI.get(model, MOI.BarrierIterations())
+        results[k, 5] = JuMP.objective_value(model)
+        results[k, 6] = 0.0
         results[k, 7] = 0.0
-        results[k, 8] = 0.0
-        results[k, 9] = JuMP.solve_time(model)
+        results[k, 8] = JuMP.solve_time(model)
 
         k += 1
     end
-    names = [case for (case, _) in CASES]
+    names = String[]
+    for (case, scenario) in instances, nK in contingencies
+        push!(names, "$(case)_$(scenario)")
+    end
     return [names results]
 end
 
 function benchmark_madncl(dataset; backend=nothing, options...)
     instances = parse_dataset(dataset)
     n = length(instances)
+    contingencies = [10, 50]
 
-    results = zeros(n, 8)
+    results = zeros(n * length(contingencies), 8)
     k = 1
 
-    for (case, scenario) in instances, nK in [10, 50, 100]
+    for (case, scenario) in instances, nK in contingencies
         model = goc1_model(
             joinpath(dataset, case),
             scenario,
@@ -110,32 +115,44 @@ function benchmark_madncl(dataset; backend=nothing, options...)
         results[k, 7] = res.counters.linear_solver_time
         results[k, 8] = res.counters.total_time
 
+        refresh()
+
         k += 1
     end
-    names = [case for (case, _) in CASES]
+    names = String[]
+    for (case, scenario) in instances, nK in contingencies
+        push!(names, "$(case)_$(scenario)")
+    end
     return [names results]
 end
 
 function parse_args(args::Vector{String})
     solver = nothing
     dataset = joinpath("data", "trial_0")
+    device = 0
 
     for arg in args
         if startswith(arg, "--solver=")
             solver = split(arg, "=")[2]
         elseif startswith(arg, "--dataset=")
             dataset = split(arg, "=")[2]
+        elseif startswith(arg, "--device=")
+            device = parse(Int, split(arg, "=")[2])
         end
     end
-    return solver, dataset
+    return solver, dataset, device
 end
 
 function @main(args::Vector{String})
-    solver, dataset = parse_args(args)
+    solver, dataset, device = parse_args(args)
+    flag = split(dataset, "/")[end]
+    println(flag)
+
+    CUDA.device!(device)
 
     if solver == "knitro"
         results = benchmark_knitro(dataset)
-        writedlm(joinpath(@__DIR__, "..", "results", "scopf-knitro.csv"), results)
+        writedlm(joinpath(@__DIR__, "..", "results", "goc1-$(flag)-knitro.csv"), results)
     elseif solver == "madncl-cpu"
         results = benchmark_madncl(
             dataset;
@@ -143,11 +160,12 @@ function @main(args::Vector{String})
             linear_solver=Ma57Solver,
             richardson_tol=1e-12,
             richardson_max_iter=20,
+            bound_relax_factor=1e-7,
             max_iter=1000,
             max_wall_time=1200.0,
             kkt_system=MadNCL.K2rAuglagKKTSystem,
         )
-        writedlm(joinpath(@__DIR__, "..", "results", "scopf-madncl-k2r-ma57.csv"), results)
+        writedlm(joinpath(@__DIR__, "..", "results", "goc1-$(flag)-madncl-k2r-ma57.csv"), results)
     elseif solver == "madncl-cuda"
         results = benchmark_madncl(
             dataset;
@@ -158,11 +176,12 @@ function @main(args::Vector{String})
             cudss_pivot_epsilon=1e-10,
             richardson_tol=1e-12,
             richardson_max_iter=20,
+            bound_relax_factor=1e-7,
             max_iter=1000,
             max_wall_time=1200.0,
             kkt_system=MadNCL.K2rAuglagKKTSystem,
         )
-        writedlm(joinpath(@__DIR__, "..", "results", "scopf-madncl-k2r-cudss.csv"), results)
+        writedlm(joinpath(@__DIR__, "..", "results", "goc1-$(flag)-madncl-k2r-cudss.csv"), results)
     end
 end
 

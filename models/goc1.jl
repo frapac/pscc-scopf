@@ -44,7 +44,10 @@ function goc1_model(
     alpha = [ref[:gen][i]["alpha"] for i in keys(ref[:gen])] ./ sbase
 
     # Parse contingencies
-    contingencies = [cont.idx for cont in ref[:branch_contingencies]][1:nK]
+    contingencies = [cont.idx for cont in ref[:branch_contingencies]]
+    if nK < length(contingencies)
+        contingencies = contingencies[1:nK]
+    end
     K = length(contingencies) + 1
 
     # Build model

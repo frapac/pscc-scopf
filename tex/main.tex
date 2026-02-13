@@ -441,6 +441,36 @@ $(v_b^k, \theta_b^k) \in \mathbb{R}^{n_b} \times \mathbb{R}^{n_b}$, and the acti
 For $(a, b) \in \mathbb{R}^2$, we say that $a$ complements $b$ if $a \geq 0$, $b \geq 0$
 and $a b = 0$. The complementarity constraint is denoted by $0 \leq a \perp b \geq 0$.
 
+\subsection{AC-OPF model}
+We formulate the model using the classical polar formulation of the AC-OPF problem.
+The variables in the base case and the contingencies have the following bounds,
+for $k=0, 1,\cdots, K$,
+\begin{equation}
+  \begin{aligned}
+  & \underline{p}_g \leq p_g^k \leq \overline{p}_g \; , \quad
+  \underline{q}_g \leq q_g^k \leq \overline{q}_g \; , \\
+  & \underline{v}_b \leq v_b^k \leq \overline{v}_b \; , \quad
+  \underline{\theta}_b \leq \theta_b^k \leq \overline{\theta}_b \; .
+  \end{aligned}
+\end{equation}
+The active and reactive power flow constraints at each bus are,
+for $i=1, \cdots, n_b$:
+\begin{equation}
+  \begin{aligned}
+    & \sum_{g \in \mathcal{G}(i)} p_g^k - p_{\ell,i} - g_i^{sh} v_i^2 - \sum_{j \in \mathcal{N}(i)} p_{ij} = 0 \; , \\
+    & \sum_{g \in \mathcal{G}(i)} q_g^k - q_{\ell,i} + b_i^{sh} v_i^2 - \sum_{j \in \mathcal{N}(i)} q_{ij} = 0 \; ,\\
+    & \text{with} \\
+    & p_{ij} = g_{ii} v_i^2 - (g_{ij} \cos(\theta_i - \theta_j) + b_{ij} \sin(\theta_i - \theta_j))v_i v_j   \\
+    & q_{ij} = -b_{ii} v_i^2 + (b_{ij} \cos(\theta_i - \theta_j) - g_{ij} \sin(\theta_i - \theta_j)) v_i v_j  \\
+  \end{aligned}
+\end{equation}
+The line current rating constraints are:
+\begin{equation}
+  p_{ij}^2 + q_{ij}^2 \leq \overline{\ell}_{ij} \; , \;
+  p_{ji}^2 + q_{ji}^2 \leq \overline{\ell}_{ij} \; .
+\end{equation}
+
+
 \subsection{Recourse constraints}
 In SCOPF, the variation of the power production $p_g^k \in \mathbb{R}^{n_g}$ in contingency $k$
 should reflect the behavior of the \emph{automatic generation control system}
@@ -486,7 +516,7 @@ and \eqref{eq:pvpq} is a nonlinear program with complementarity
 constraints. The MPCC formulation has been adopted throughout the GO
 competition, and is described at length in \cite{aravena2023recent,curtis2023decomposition,gholami2023admm}.
 
-\subsection{AC-SCOPF}
+\subsection{Optimization model}
 We adapt the formulation of the AC-SCOPF used in \cite{frank2016introduction} to include the complementarity
 constraints modeling the AGC~\eqref{eq:droopmpec} and the PV/QP switches~\eqref{eq:pvpq}.
 We note $u_0 = (p_g^0, v_{b,PV}^0)$ and $x_0 = (\theta_b^0, v_{b,PQ}^0, q_g^0)$ the control and the state in the base case,
@@ -509,6 +539,9 @@ in \eqref{eq:droopmpec} and \eqref{eq:pvpq}, $h_k(\cdot)$ the operational
 constraints (line-flow and operational bounds) and $G(\cdot)$ and
 $H(\cdot)$ are two functions encoding the
 complementarity parts in \eqref{eq:droopmpec} and \eqref{eq:pvpq}.
+In contrast to the formulation used by the GO-competition~\cite{aravena2023recent}, we do not
+have to penalize the constraint violation in the objective using an $\ell_1$ penalty, as the augmented
+Lagrangian algorithm is doing that automatically.
 
 For a given base-case control $u_0$, the contingency $k$ is feasible if there is a solution
 $(x_k, u_k)$ to the nonlinear system with complementarity constraints:
@@ -525,6 +558,12 @@ The goal of \eqref{eq:scopf} is to find a base-case control $u_0$ such
 that \eqref{eq:screening} is feasible for all the contingency $k=1,\cdots,K$.
 
 \section{Mathematical programs with complementarity constraints}
+The complementarity constraints complicate the solution of the problem \eqref{eq:scopf}.
+As such, they are usually reformulated with binary variables using a big-M method,
+leading to the formulation of a mixed-integer nonlinear program (MINLP). However,
+the large-number of binary variables renders the MINLP quickly intractable.
+Instead, we choose to address directly the complementarity constraints
+and solve \eqref{eq:scopf} using an augmented Lagrangian method based on the algorithm NCL.
 We detail the formulation of the SCOPF~\eqref{eq:scopf} as a mathematical
 program with complementarity constraints (MPCC) in \S\ref{sec:mpcc:intro},
 and discuss the associated first-order complementarity conditions in \S\ref{sec:mpcc:stationary}.
@@ -546,8 +585,7 @@ the equivalent MPCC in vertical form:
     \right.
   \end{aligned}
 \end{equation}
-with
-$w \in \mathbb{R}^n$ the variable aggregating the controls, states and slack variables
+with $w \in \mathbb{R}^n$ the variable aggregating the controls, states and slack variables
 and $c: \mathbb{R}^n \to \mathbb{R}^m$ a function aggregating all the equality and inequality constraints
 in \eqref{eq:scopf}.
 We partition the decision variable as $w = (w_0, w_1, w_2) \in \mathbb{R}^{n-2p} \times
@@ -557,7 +595,12 @@ the MPCC Lagrangian as
 \begin{multline}
   \mathcal{L}^{\mathrm{MPCC}}(w, \lambda, \xi, \mu) = \phi(w) + \lambda^\top c(w) \\ - \xi^\top w_0 - \mu_1^\top w_1 - \mu_2^\top w_2 \; .
 \end{multline}
-The MPCC~\eqref{eq:mpcc} is equivalent to the nonlinear program:
+The complementarity constraints in \eqref{eq:mpcc} state that for $i=1,\cdots,p$, $w_{1i} w_{2i} = 0$
+and $(w_{1i}, w_{2i}) \geq 0$. As both variables appearing in the product are positive,
+the complementarity constraints rewrite equivalently with inequality constraints as $w_{1i} w_{2i} \leq 0$
+and $(w_{1i}, w_{2i}) \geq 0$ for $i=1,\cdots,p$: this alternative formulation
+gives the best result when used in conjunction with an interior-point method~\cite{leyffer2006interior}.
+Thus, a popular reformulation of~\eqref{eq:mpcc} is:
 \begin{equation}
   \label{eq:mpccnlp}
   \begin{aligned}
@@ -576,11 +619,16 @@ The Lagrangian for \eqref{eq:mpccnlp} is
 \begin{multline}
   \mathcal{L}(w, \lambda, \xi, \nu) = \phi(w) + \lambda^\top c(w) \\ - \xi^\top w_0 - \nu_1^\top w_1 - \nu_2^\top w_2 + \nu_0^\top W_1 W_2 e \; .
 \end{multline}
-Problem~\eqref{eq:mpccnlp} is degenerate, in the sense that
-the relative interior of the feasible set is empty. As a consequence, \eqref{eq:mpccnlp}
-does not satisfy the Mangasarian-Fromovitz constraint qualification (MFCQ), implying the multipliers $(\lambda, \nu)$ can be unbounded.
-This can cause serious numerical issues if \eqref{eq:mpccnlp} is directly treated
-by classical nonlinear programming solvers.
+Problem~\eqref{eq:mpccnlp} is degenerate and the Mangasarian-Fromovitz constraint qualification (MFCQ)
+fails for all feasible points. Indeed, suppose we have a single complementarity
+constraint such that $(w_1, w_2) \geq 0$ and $w_1 w_2 \leq 0$. By definition, a feasible point $(w_1, w_2)$ satisfies
+MFCQ if there exists a feasible direction $(d_1, d_2)$ such that $d_1 > 0$ if $w_1 = 0$, $d_2 > 0$ if
+$w_2 = 0$ and $w_2 d_1 + w_1 d_2 < 0$. If $w_1 = 0$ and $w_2 > 0$, we get $d_1 > 0$ and $w_2 d_1 < 0$,
+which is a contradiction as $w_2$ is positive. If the complementarity constraint
+is biactive (both $w_1 = 0$ and $w_2 = 0$) the condition $w_2 d_1 + w_1 d_2 < 0$ cannot hold.
+Hence MFCQ is not satisfied, and as a consequence the set of optimal multipliers $(\lambda, \nu)$ can be unbounded,
+leading to potential numerical issues in
+classical nonlinear programming solvers~\cite{leyffer2006interior}.
 
 \subsection{First-order stationary conditions}
 \label{sec:mpcc:stationary}
@@ -623,7 +671,7 @@ multipliers $(\lambda, \xi, \mu) \in \mathbb{R}^m \times \mathbb{R}^{2p}$ such t
 \end{equation}
 Conditions \eqref{eq:strongstationarity} are the KKT stationary solution of a relaxed nonlinear program~\cite{scheel2000mathematical} with no complementarity constraint.
 If the relaxed nonlinear program satisfies Linear Independence Constraint Qualification (LICQ),
-we say that MPCC-LICQ holds at $x \in \Omega$.
+we say that MPCC-LICQ holds at $w \in \Omega$.
 Our goal is to find a strong stationary solution for \eqref{eq:mpcc}.
 % Every $w \in \Omega$ satisfying strong stationarity satisfies Bouligand stationarity~\cite{scheel2000mathematical}, with equivalence if MPCC-LICQ holds.
 
@@ -637,10 +685,9 @@ sequential quadratic programming (SQP) or an interior-point method (IPM)~\cite{f
 with a small parameter $\tau > 0$, such that the constraint $W_1 W_2 e \leq 0$
 is reformulated as $W_1 W_2 e \leq \tau$. We obtain the so-called Scholtes
 relaxation~\cite{scholtes2001convergence}: by driving the term $\tau$ to $0$ we recover the solution of the original MPCC~\eqref{eq:mpcc}.
-% This is the method implemented in Ipopt-C~\cite{raghunathan2005interior}.
 \emph{Penalty-based methods} use an $\ell_1$-exact penalty to penalize the complementarity
 constraints in the objective by adding a term $\tau w_1^\top w_2$, with a large-enough penalty $\tau >0$.
-Assuming MPCC-LICQ, the $\ell_1$-exact penalty method converges to a strong-stationary solution $x \in \Omega$
+Assuming MPCC-LICQ, the $\ell_1$-exact penalty method converges to a strong-stationary solution $w \in \Omega$
 \cite{ralph2004some}.
 This is the method used in the solver Knitro~\cite{leyffer2006interior}.
 In the next section, we interpret NCL as a mix of regularization and penalty-based methods.
@@ -652,57 +699,68 @@ We show that NCL can solve the problem~\eqref{eq:mpccnlp} on the GPU.
 
 \subsection{Algorithm NCL}
 \label{sec:ncl:ncl}
-NCL is strictly equivalent to the classical augmented Lagrangian method,
+The augmented Lagrangian method introduces a penalty $\rho^{(n)}$
+and two multiplier estimates $(\lambda^{(n)}, \nu_0^{(n)}) \in \mathbb{R}^m \times \mathbb{R}^p$.
+When the problem has a mix of equality and inequality constraints,
+the augmented Lagrangian subproblem is:
+\begin{equation}
+  \label{eq:auglagsubpb}
+  \min_{w \geq 0} \;  \mathcal{L}_\rho(w, \lambda^{(n)}, \nu^{(n)}_0)
+\end{equation}
+with $\mathcal{L}_\rho(w, \lambda^{(n)}, \nu^{(n)}_0) := \phi(w) + \frac{1}{2\rho^{(n)}} ( \| c(w) + \lambda^{(n)} \|^2 + \|\max\{ 0, W_1 W_2e + \nu_0^{(n)} \} \|^2 )$.
+Upon finding appropriate multipliers estimates $(\lambda^{(n)}, \nu_0^{(n)})$ and penalty $\rho^{(n)}$,
+the solution of \eqref{eq:auglagsubpb} converges to the solution of \eqref{eq:mpccnlp}~\cite{izmailov2012global}.
+However, the augmented Lagrangian $\mathcal{L}_\rho(\cdot)$ comes with two issues:
+the $\max$ term implies that the second-order derivatives are not continuous everywhere,
+and even when it is defined, the Hessian $\nabla_{x x}^2 \mathcal{L}_\rho$ gets ill-conditioned as we increase the penalty $\rho$.
+
+On its end, NCL is strictly equivalent to the classical augmented Lagrangian method,
 but uses a nonlinearly constrained formulation in the subproblems.
-For solving MPCC~\eqref{eq:mpcc}, it has been proven in \cite{izmailov2012global} that the augmented Lagrangian
-method converges to a strongly stationary solution $x \in \Omega$ if MPCC-LICQ holds at $x$
-and the sequence of multiplier estimates $\{\nu_0^n\}_n$ generated by the algorithm
-has a bounded subsequence (this prevents the algorithm from converging to a spurious solution).
-NCL operates at two level: it updates a penalty $\rho^{(n)}$
-and two multiplier estimates $(\lambda^{(n)}, \nu_0^{(n)}) \in \mathbb{R}^m \times \mathbb{R}^p$ in the \emph{outer iterations}, whereas the \emph{inner iterations}
-solve the constrained nonlinear subproblem
+NCL solves both problems by introducing two free regularization
+variables $(r, t) \in \mathbb{R}^m \times \mathbb{R}^p$, and solves the equivalent subproblem:
 \begin{equation}
   \label{eq:nclsubpb}
   \begin{aligned}
-    \min_{w, r, t} \; & \; \mathcal{L}_\rho(w, r, t, \lambda^{(n)}, \nu_0^{(n)}) \\
+    \min_{w, r, t} \; & \;   \phi(w) + (\lambda^{(n)})^\top r  + (\nu_0^{(n)})^\top t +  \frac{\rho^{(n)}}{2}\|(r, t) \|^2  \; , \\
     \text{s.t.} \quad & c(w) - r = 0 \; , \\
-                      & W_1 W_2 e \leq t  \; , \; (w_0, w_1, w_2) \geq 0 \; ,
+                      & W_1 W_2 e \leq t  \; , \; w \geq 0 \; .
   \end{aligned}
 \end{equation}
-with
-$\mathcal{L}_\rho(w, r, t, \lambda^{(n)}, \nu^{(n)}_0) =  \phi(w) + (\lambda^{(n)})^\top r  + (\nu_0^{(n)})^\top t +  \frac{\rho^{(n)}}{2}(\|r \|^2 + \|t\|^2)$
-and $(r, t) \in \mathbb{R}^m \times \mathbb{R}^p$ two regularization variables.
-Subproblem~\eqref{eq:nclsubpb} is always feasible.
 We emphasize that NCL treats \eqref{eq:mpccnlp} as a generic nonlinear program, and does not
 apply any special treatment to the complementarity constraints. The regularization
 $t$ plays the role of the Scholtes relaxation parameter (see \S\ref{sec:mpcc:solution})
 and is penalized in the objective by the Augmented Lagrangian penalty.
 
-At a given outer iteration $n$, NCL solves Subproblem \eqref{eq:nclsubpb}
-with an interior-point method (IPM).
+We make a distinction between the {outer} and the {inner} iterations.
+At a given outer iteration $n$, NCL solves \eqref{eq:nclsubpb}
+with an interior-point method (IPM). The inner iterations refer to the IPM steps themselves.
 Only the objective changes between two successive outer iterations, hence the IPM
 can be efficiently warmstarted from the previous primal-dual solution.
 Once Subproblem~\eqref{eq:nclsubpb} is solved, we update the augmented Lagrangian
-parameters $(\rho^{(n)}, \lambda^{(n)}, \nu_0^{(n)})$ using the solution $(x^{n+1}, r^{n+1}, t^{n+1})$
-and proceed to the next outer iteration. We refer to \cite{montoison2025madncl} for a comprehensive
-description of the algorithm.
-
-% For a given forcing sequence $\{\eta^{(n)}\}_n$, NCL uses the classical updates:
-% \begin{itemize}
-%   \item If $\|(r^{(n+1)}, t^{(n+1)})\|_\infty \leq \eta^{(n)}$, then
-%     \begin{equation*}
-%       \begin{aligned}
-%       & (\lambda^{(n+1)}, \nu_0^{(n+1)}) = (\lambda^{(n)}, \nu_0^{(n)}) + \rho^{(n)} (r^{(n+1)}, t^{(n+1)}) \; ,\\
-%       & \rho^{(n+1)} = \rho^{(n)} \; .
-%       \end{aligned}
-%     \end{equation*}
-%   \item Otherwise, set
-%     \begin{equation*}
-%       \lambda^{(n+1)} = \lambda^{(n)} \; , \;
-%       \nu_0^{(n+1)} = \nu_0^{(n)} \; , \;
-%       \rho^{(n+1)} = 10 \rho^{(n)} \; .
-%     \end{equation*}
-% \end{itemize}
+parameters $(\rho^{(n)}, \lambda^{(n)}, \nu_0^{(n)})$ using the solution $(w^{n+1}, r^{n+1}, t^{n+1})$
+and proceed to the next outer iteration.
+For a given forcing sequence $\{\eta^{(n)}\}_n$, NCL uses the classical updates:
+\begin{itemize}
+  \item If $\|(r^{(n+1)}, t^{(n+1)})\|_\infty \leq \eta^{(n)}$, then
+    \begin{equation*}
+      \begin{aligned}
+      & (\lambda^{(n+1)}, \nu_0^{(n+1)}) = (\lambda^{(n)}, \nu_0^{(n)}) + \rho^{(n)} (r^{(n+1)}, t^{(n+1)}) \; ,\\
+      & \rho^{(n+1)} = \rho^{(n)} \; .
+      \end{aligned}
+    \end{equation*}
+  \item Otherwise, set
+    \begin{equation*}
+      \lambda^{(n+1)} = \lambda^{(n)} \; , \;
+      \nu_0^{(n+1)} = \nu_0^{(n)} \; , \;
+      \rho^{(n+1)} = 10 \rho^{(n)} \; .
+    \end{equation*}
+\end{itemize}
+We refer to \cite{montoison2025madncl} for a comprehensive description of the algorithm.
+It has been proven in \cite{izmailov2012global} that the augmented Lagrangian
+method converges to a strongly stationary solution $w \in \Omega$ of \eqref{eq:mpccnlp}
+if MPCC-LICQ holds at $w$
+and the sequence of multiplier estimates $\{\nu_0^n\}_n$ generated by the algorithm
+has a bounded subsequence (this prevents the algorithm from converging to a spurious solution).
 
 If the problem is infeasible, the penalty $\rho^{(n)}$ diverges to $+\infty$
 and NCL iterates converge to a stationary solution of the \emph{feasibility problem}
@@ -714,11 +772,12 @@ and NCL iterates converge to a stationary solution of the \emph{feasibility prob
                       & (w_0, w_1, w_2) \geq 0 \; , \; W_1 W_2 e \leq t \;.
   \end{aligned}
 \end{equation}
+As discussed in \cite{izmailov2012global}, the augmented Lagrangian algorithm
+can converge to a solution of \eqref{eq:feaspb} even if the original problem
+is feasible: this is known caveat, and a similar situation can occur if we
+replace the augmented Lagrangian by a $\ell_1$ exact penalty~\cite{leyffer2006interior}.
 % By checking the respective values in the regularization variables $r$ and $t$,
 % we can quickly assess which contingencies and constraints are rendering the SCOPF problem~\eqref{eq:scopf} infeasible.
-In contrast to the formulation used by the GO-competition~\cite{aravena2023recent}, we do not
-have to penalize the constraint violation in the objective using an $\ell_1$ penalty, as the augmented
-Lagrangian algorithm is doing that automatically.
 
 \subsection{Newton systems}
 \label{sec:ncl:newton}
@@ -811,15 +870,32 @@ but not impact the positive-definitess of the reduced Hessian
 as we approach the solution~\cite[Section 3.4]{demiguel2005two}, thus limiting
 the effect of this second degeneracy.
 
-Linear system~\eqref{eq:newtonsystem} is sparse symmetric indefinite.
-Hence, traditional optimization solvers often apply HSL~\cite{duff1983multifrontal}.
-These solvers use numerical pivoting for stability, a method known to be difficult to parallelize
-and limiting the tractability of these solvers for large-scale SCOPF.
-However, the non-zero block $C$ adds a regularization to the system, and this allows
-solution of \eqref{eq:newtonsystem} with a pivoting-free factorization, e.g., using the signed Cholesky factorization~\cite{montoison2025madncl}.
-Efficient parallel implementations of pivoting-free algorithms exist for GPUs,
-opening the door for a fast factorization routine for \eqref{eq:newtonsystem}.
+\subsection{Linear solvers}
+MadNLP uses an inertia correction mechanism to ensure the reduced Hessian
+(the matrix $A$ projected onto the null-space of the Jacobian $B$) is positive definite
+If this condition is satisfied, the solution of the linear system~\eqref{eq:newtonsystem} is a valid descent direction. The reduced Hessian is positive definite if and only if the inertia
+of the system~\eqref{eq:newtonsystem} is $(n, m+p, 0)$.
+If the inertia is not correct, MadNLP adds a positive term on the diagonal
+entries of the matrix $A$ and increases it till the inertia becomes exactly equal to $(n, m+p, 0)$.
+This procedure requires computing multiple matrix factorization, and can be very costly.
 
+The linear system~\eqref{eq:newtonsystem} is usually factorized using an inertia-revealing
+linear solver. The Duff-Reid algorithm~\cite{duff1983multifrontal}, as implemented in the HSL solvers,
+is often used: it decomposes the system~\eqref{eq:newtonsystem} as
+$L B L^\top$, with $L$ an unit lower triangular matrix and $B$ a block diagonal matrix
+with blocks of size $(1, 1)$ or $(2, 2)$. Using Sylvester's law of inertia,
+the inertia of the matrix can be directly read from the blocks in $B$.
+However, the Duff-Reid factorization requires numerical pivoting for
+stability, a method known to be difficult to parallelize.
+In our
+case the non-zero block $C$ adds a natural regularization to the
+system~\eqref{eq:newtonsystem}, and upon regularizing slightly the pivots~\cite{montoison2025madncl},
+the system can be decomposed as $LDL^\top$, with $L$ a lower triangular matrix with a
+unit-diagonal, and $D$ a diagonal matrix. The $LDL^\top$ decomposition can be computed
+efficiently using a signed Cholesky factorization, an algorithm that requires only
+static pivoting and is numerically stable.
+Furthermore, efficient parallel implementations of pivoting-free algorithms exist for GPUs,
+opening the door for a fast factorization routine for~\eqref{eq:newtonsystem}.
 
 
 \section{Numerical results}
@@ -1006,6 +1082,11 @@ hundred of contingencies to be tackled. In future work, we plan to move the thre
 this would require addressing the ill-conditioning appearing in the IPM's Newton systems,
 caused by the millions of complementarity constraints found in AC-SCOPF with
 more than 10,000 buses and 100 contingencies.
+
+\section*{Acknowledgements}
+We thank Michael Saunders for giving us a thorough feedback on the first version
+of this paper. We also thank the three anonymous reviewers for their meaningful remarks,
+which have helped in improving the paper.
 
 % \subsection{Figures}
 % An example of a floating figure using the graphicx package.

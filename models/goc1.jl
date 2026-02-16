@@ -33,9 +33,9 @@ function goc1_model(
     pviolmax = [2.0, 50.0, Inf] ./ sbase
     qviolmax = [2.0, 50.0, Inf] ./ sbase
     sviolmax = [2.0, 50.0, Inf] ./ sbase
-    pviolcost = [1e3, 5e3, 1e6]
-    qviolcost = [1e3, 5e3, 1e6]
-    sviolcost = [1e3, 5e3, 1e6]
+    pviolcost = [1e3, 5e3, 1e6] .* sbase
+    qviolcost = [1e3, 5e3, 1e6] .* sbase
+    sviolcost = [1e3, 5e3, 1e6] .* sbase
     δ = 0.5
 
     npw = maximum([g["ncost"] for (i, g) in ref[:gen]])
@@ -238,12 +238,13 @@ function goc1_model(
             JuMP.@constraint(model, q_to == -(b+b_to)*vm_to^2 - (-b*tr+g*ti)/ttm*(vm_to*vm_fr*cos(va_to-va_fr)) + (-g*tr-b*ti)/ttm*(vm_to*vm_fr*sin(va_to-va_fr)) )
 
             # Apparent power limit, from side and to side
+            rate = (k >= 2) ? branch["rate_b"] : branch["rate_a"]
             if reg_l1
-                JuMP.@constraint(model, p_fr^2 + q_fr^2 <= branch["rate_a"]^2 + σs[i, k])
-                JuMP.@constraint(model, p_to^2 + q_to^2 <= branch["rate_a"]^2 + σs[i, k])
+                JuMP.@constraint(model, p_fr^2 + q_fr^2 <= (rate*vm_fr + σs[i, k])^2)
+                JuMP.@constraint(model, p_to^2 + q_to^2 <= (rate*vm_to + σs[i, k])^2)
             else
-                JuMP.@constraint(model, p_fr^2 + q_fr^2 <= branch["rate_a"]^2)
-                JuMP.@constraint(model, p_to^2 + q_to^2 <= branch["rate_a"]^2)
+                JuMP.@constraint(model, p_fr^2 + q_fr^2 <= (rate*vm_fr)^2)
+                JuMP.@constraint(model, p_to^2 + q_to^2 <= (rate*vm_to)^2)
             end
         end
     end

@@ -455,20 +455,25 @@ for $k=0, 1,\cdots, K$,
 \end{equation}
 The active and reactive power flow constraints at each bus are,
 for $i=1, \cdots, n_b$:
-\begin{equation}
+\begin{equation*}
   \begin{aligned}
-    & \sum_{g \in \mathcal{G}(i)} p_g^k - p_{\ell,i} - g_i^{sh} v_i^2 - \sum_{j \in \mathcal{N}(i)} p_{ij} = 0 \; , \\
-    & \sum_{g \in \mathcal{G}(i)} q_g^k - q_{\ell,i} + b_i^{sh} v_i^2 - \sum_{j \in \mathcal{N}(i)} q_{ij} = 0 \; ,\\
-    & \text{with} \\
-    & p_{ij} = g_{ii} v_i^2 - (g_{ij} \cos(\theta_i - \theta_j) + b_{ij} \sin(\theta_i - \theta_j))v_i v_j   \\
-    & q_{ij} = -b_{ii} v_i^2 + (b_{ij} \cos(\theta_i - \theta_j) - g_{ij} \sin(\theta_i - \theta_j)) v_i v_j  \\
+    & \sum_{j \in \mathcal{G}(i)} p_{g,j}^k - p_{\ell,i} - g_i^{sh} (v_{b,i}^k)^2 - \sum_{j \in \mathcal{N}(i)} p_{ij}^k = 0 \; , \\
+    & \sum_{j \in \mathcal{G}(i)} q_{g,j}^k - q_{\ell,i} + b_i^{sh} (v_{b,i}^k)^2 - \sum_{j \in \mathcal{N}(i)} q_{ij}^k = 0 \; ,\\
+    & \text{with, for all arcs $(i, j)$}, \\
+    & p_{ij}^k = y_{1ij} (v_{b,i}^k)^2 - (y_{3ij} \cos(\Delta\theta_{ij}^k) + y_{4ij} \sin(\Delta\theta_{ij}^k))v_{b,i}^k v_{b,j}^k \;,  \\
+    & q_{ij}^k = y_{2ij} (v_{b,i}^k)^2 + (y_{4ij} \cos(\Delta\theta_{ij}^k) - y_{3ij} \sin(\Delta\theta_{ij}^k)) v_{b,i}^k v_{b,j}^k\; ,
   \end{aligned}
-\end{equation}
+\end{equation*}
+with $\Delta\theta_{ij}^k := \theta_{b,i}^k - \theta_{b,j}^k$,
+and $(y_{1ij}, y_{2ij}, y_{3ij}, y_{4ij})$ four coefficients associated to the physical
+parameters of the line $(i,j)$.
 The line current rating constraints are:
-\begin{equation}
-  p_{ij}^2 + q_{ij}^2 \leq \overline{\ell}_{ij} \; , \;
-  p_{ji}^2 + q_{ji}^2 \leq \overline{\ell}_{ij} \; .
-\end{equation}
+\begin{equation*}
+  (p_{ij}^k)^2 + (q_{ij}^k)^2 \leq (\overline{\ell}_{ij}^k)^2 (v_{b,i}^k)^2 \; , \;
+  \quad \forall (i, j) \; ,
+\end{equation*}
+with $\ell_{ij}^k$ the rate of line $(i, j)$ in contingency $k$ (equal to $0$ if the
+line is removed in contingency $k$).
 
 
 \subsection{Recourse constraints}
@@ -486,19 +491,19 @@ where $\Delta^k \in \mathbb{R}$ is a variable encoding the power adjustment in c
 and $\underline{p}_g, \overline{p}_g$ are two vectors encoding the lower and upper bounds on the
 active power generation.
 The nonsmooth $\min$ and $\max$ operations clip $p_g^0 + \alpha_g \Delta^k$ to the bounds, and can be written as
-a set of complementarity constraints~\cite{baumrucker2008mpec}: for non-negative $\pi_{g,+}^k \geq 0$
-and $\pi_{g,-}^k \geq 0$ Equation~\eqref{eq:agc} is equivalent to,
+a set of complementarity constraints~\cite{baumrucker2008mpec}: for non-negative $\pi_{g+}^k \geq 0$
+and $\pi_{g-}^k \geq 0$ Equation~\eqref{eq:agc} is equivalent to,
 for all $k=1, \cdots, K$,
 \begin{equation}
   \label{eq:droopmpec}
   \begin{aligned}
-    & \pi_{g,+}^k - \pi_{g,-}^k = p_{g}^k - (p_g^0 + \alpha_g \Delta) \; , \\
-    & 0 \leq \pi_{g,-}^k \perp \overline{p}_g - p_g^k \geq 0 \; , \\
-    & 0 \leq \pi_{g,+}^k \perp p_g^k - \underline{p}_g \geq 0 \; .
+    & \pi_{g+}^k - \pi_{g-}^k = p_{g}^k - (p_g^0 + \alpha_g \Delta) \; , \\
+    & 0 \leq \pi_{g-}^k \perp \overline{p}_g - p_g^k \geq 0 \; , \\
+    & 0 \leq \pi_{g+}^k \perp p_g^k - \underline{p}_g \geq 0 \; .
   \end{aligned}
 \end{equation}
 Similarly, the \emph{voltage control} keeps the voltage
-magnitudes at the PV buses at their nominal values $v_{m,b}^k = v_{m,b}^0$ by injecting
+magnitudes at the PV buses at their nominal values $v_{b}^k = v_{b}^0$ by injecting
 or absorbing reactive power. However, if the reactive power production $q_g^k$ reaches
 its lower $\underline{q}_g$ or upper limit $\overline{q}_g$, the bus is converted to a PQ bus and the voltage is allowed
 to vary. The PV/PQ switches are modeled with a second set of complementarity constraints with,

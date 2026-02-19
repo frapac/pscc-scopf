@@ -437,7 +437,7 @@ We adapt the formulation used in the GO competition~\cite{aravena2023recent}.
 We denote by $K$ the number of contingencies, and refer to the base case by the index $k=0$.
 We suppose the system has $n_b$ buses, $n_\ell$ lines and $n_g$ generators.
 For $k=0, \cdots, K$, the voltage magnitudes and angles at buses are denoted by
-$(v_b^k, \theta_b^k) \in \mathbb{R}^{n_b} \times \mathbb{R}^{n_b}$, and the active and reactive power generations by $(p_g^k, q_g^k) \in \mathbb{R}^{n_g} \times \mathbb{R}^{n_g}$.
+$(v_b^k, \theta_b^k) \in \mathbb{R}^{n_b} \times \mathbb{R}^{n_b}$, the loads by $(p_{\ell}, q_\ell)$ and the active and reactive power generations by $(p_g^k, q_g^k) \in \mathbb{R}^{n_g} \times \mathbb{R}^{n_g}$.
 For $(a, b) \in \mathbb{R}^2$, we say that $a$ complements $b$ if $a \geq 0$, $b \geq 0$
 and $a b = 0$. The complementarity constraint is denoted by $0 \leq a \perp b \geq 0$.
 
@@ -523,7 +523,7 @@ competition, and is described at length in \cite{aravena2023recent,curtis2023dec
 
 \subsection{Optimization model}
 We adapt the formulation of the AC-SCOPF used in \cite{frank2016introduction} to include the complementarity
-constraints modeling the AGC~\eqref{eq:droopmpec} and the PV/QP switches~\eqref{eq:pvpq}.
+constraints modeling the AGC~\eqref{eq:droopmpec} and the PV/PQ switches~\eqref{eq:pvpq}.
 We note $u_0 = (p_g^0, v_{b,PV}^0)$ and $x_0 = (\theta_b^0, v_{b,PQ}^0, q_g^0)$ the control and the state in the base case,
 and $u_k = (p_g^k, v_{b,PV}^k)$ and $x^k = (\theta_b^k, v_{b,PQ}^k, q_g^k, \Delta^k, \pi_g^k, \nu^k_b)$
 the control and the state in contingency $k$. We define the AC-SCOPF problem as
@@ -545,8 +545,7 @@ constraints (line-flow and operational bounds) and $G(\cdot)$ and
 $H(\cdot)$ are two functions encoding the
 complementarity parts in \eqref{eq:droopmpec} and \eqref{eq:pvpq}.
 In contrast to the formulation used by the GO-competition~\cite{aravena2023recent}, we do not
-have to penalize the constraint violation in the objective using an $\ell_1$ penalty, as the augmented
-Lagrangian algorithm is doing that automatically.
+penalize the constraint violation in the objective using an $\ell_1$ penalty.
 
 For a given base-case control $u_0$, the contingency $k$ is feasible if there is a solution
 $(x_k, u_k)$ to the nonlinear system with complementarity constraints:
@@ -1044,7 +1043,9 @@ and on the GPU (using NVIDIA cuDSS).}
 of contingencies $K$ for {\tt ACTIVSg500}. We display the total number of IPM iterations
 and the time to solution (in seconds). The symbol "-" indicates that the solver failed
 to find a solution.}
-\input{scalability.tex}
+\resizebox{.95\textwidth}{!}{
+\input{scalability2.tex}
+}
 \label{tab:scopfscalability}
 \end{table*}
 
@@ -1090,8 +1091,7 @@ more than 10,000 buses and 100 contingencies.
 
 \section*{Acknowledgements}
 We thank Michael Saunders for giving us a thorough feedback on the first version
-of this paper. We also thank the three anonymous reviewers for their meaningful remarks,
-which have helped in improving the paper.
+of this paper. We also thank the three anonymous reviewers for their valuable remarks.
 
 % \subsection{Figures}
 % An example of a floating figure using the graphicx package.

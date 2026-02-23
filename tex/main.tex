@@ -643,12 +643,15 @@ We note the feasible set of \eqref{eq:mpcc} as
 \end{equation*}
 For any feasible point $w \in \Omega$, we define the index sets
 \begin{equation}
+  \label{eq:indexsets}
   \begin{aligned}
     \mathcal{I}_{+0}(w) = \{ i \in \{1, \cdots, p\} \; | \; w_{1,i} > 0 \, , \, w_{2,i} = 0 \} \;, \\
     \mathcal{I}_{0+}(w) = \{ i \in \{1, \cdots, p\} \; | \; w_{1,i} = 0 \, , \, w_{2,i} > 0 \} \;, \\
     \mathcal{I}_{00}(w) = \{ i \in \{1, \cdots, p\} \; | \; w_{1,i} = 0 \, , \, w_{2,i} = 0 \} \; .
   \end{aligned}
 \end{equation}
+As for any $w \in \Omega$, $(w_1, w_2) \geq 0$ the sets \eqref{eq:indexsets} define
+a partition of $\{1, \cdots, p\}$.
 % If $\mathcal{I}_{00}(w)$ is empty, we say $w$ satisfies \emph{strict complementarity}.
 % A point $w \in \Omega$ is \emph{Bouligand-stationary}~\cite{scheel2000mathematical} if $d = 0$ solves the linear program
 % with complementarity constraints (LPCC):
@@ -966,9 +969,9 @@ of computation time, MadNCL is at least 10 times faster than Knitro on instances
 with more than 300 buses, and MadNCL is able to detect
 infeasible problems (a common occurrence in contingency screening) much faster than
 the algorithm implemented in Knitro.
-We display the result returned by MadNCL in Figure~\ref{fig:contingency}: we scan all the line contingencies for
-the instance {\tt ACTIVSg500} and order them by level of infeasibility (as measured
-by the final objective returned by MadNCL).
+% We display the result returned by MadNCL in Figure~\ref{fig:contingency}: we scan all the line contingencies for
+% the instance {\tt ACTIVSg500} and order them by level of infeasibility (as measured
+% by the final objective returned by MadNCL).
 
 \begin{table}[!ht]
 \centering
@@ -989,14 +992,14 @@ by the final objective returned by MadNCL).
 \label{tab:timecontingency}
 \end{table}
 
-\begin{figure}[!ht]
-\centering
-\includegraphics[width=.4\textwidth]{./figures/contingency.pdf}
-\caption{Result of contingency screening for {\tt ACTIVSg500}.
-The base case solution in \eqref{eq:screening} is obtained by solving
-the classical OPF problem.}
-\label{fig:contingency}
-\end{figure}
+% \begin{figure}[!ht]
+% \centering
+% \includegraphics[width=.3\textwidth]{./figures/contingency.pdf}
+% \caption{Result of contingency screening for {\tt ACTIVSg500}.
+% The base case solution in \eqref{eq:screening} is obtained by solving
+% the classical OPF problem.}
+% \label{fig:contingency}
+% \end{figure}
 
 \subsection{Solution of large-scale AC-SCOPFs on GPU}
 \label{sec:numerics:scopf}
@@ -1033,10 +1036,11 @@ very effective at solving the linear system \eqref{eq:newtonsystem}, explaining 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=.4\textwidth]{./figures/scalability.pdf}
-\caption{Time per iteration (in seconds) against number of contingencies $K$
+\includegraphics[width=.4\textwidth]{./figures/scalability_decomposed.pdf}
+\caption{Total time, time in linear solver and time in AD reported per iteration (in seconds), against number of contingencies $K$
   when solving {\tt ACTIVSg500}. We compare Knitro (using JuMP)
-against MadNCL (using ExaModels). We test MadNCL both on the CPU (using HSL MA57)
-and on the GPU (using NVIDIA cuDSS).}
+against MadNCL (using JuMP, SymbolicAD and ExaModels).
+We test MadNCL both on the CPU (using HSL MA57) and on the GPU (using NVIDIA cuDSS).}
 \label{fig:scalability}
 \end{figure}
 
@@ -1046,7 +1050,7 @@ and on the GPU (using NVIDIA cuDSS).}
 of contingencies $K$ for {\tt ACTIVSg500}. We display the total number of IPM iterations
 and the time to solution (in seconds). The symbol "-" indicates that the solver failed
 to find a solution.}
-\resizebox{.95\textwidth}{!}{
+\resizebox{.90\textwidth}{!}{
 \input{scalability2.tex}
 }
 \label{tab:scopfscalability}

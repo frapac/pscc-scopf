@@ -469,32 +469,27 @@ for $i=1, \cdots, n_b$:
 with $\Delta\theta_{ij}^k := \theta_{b,i}^k - \theta_{b,j}^k$,
 $\mathcal{G}(i)$ (resp. $\mathcal{N}(i)$) the set of generators (resp. buses) connected to $i$,
 and $(y_{1ij}, y_{2ij}, y_{3ij}, y_{4ij})$ four coefficients associated to the physical
-parameters of the line $(i,j)$ (or to the associated transformer).
-The line current rating constraints are:
+parameters of the line $(i,j)$. The line current rating constraints are:
 \begin{equation*}
   (p_{ij}^k)^2 + (q_{ij}^k)^2 \leq (\overline{\ell}_{ij}^k)^2 (v_{b,i}^k)^2 \; , \;
   \quad \forall (i, j) \in \mathcal{A} \; ,
 \end{equation*}
 with $\ell_{ij}^k$ the rate of line $(i, j)$ in contingency $k$ (equal to $0$ if the
-line is removed in contingency $k$).
+line has an outage in contingency $k$).
 
 \subsection{Recourse constraints}
 In SCOPF, the variation of the power production $p_g^k \in \mathbb{R}^{n_g}$ in contingency $k$
 should reflect the behavior of the \emph{automatic generation control system}
 (AGC, also known as droop control): the active power is used to regulate the
 frequency in the post-contingency state. Given a participation factor
-encoded as a vector $\alpha_g \in \mathbb{R}^{n_g}$, the power generation in contingency $k$ is given by
+encoded by a vector $\alpha_g \in \mathbb{R}^{n_g}$, the power generation in contingency $k$ is given by
 \begin{equation}
   \label{eq:agc}
   p_g^k = \min\Big(\max\big( p_g^0 + \alpha_g \Delta^k , \; \underline{p}_g \big), \; \overline{p}_g \Big) \; ,
 \end{equation}
-where $\Delta^k \in \mathbb{R}$ is a variable encoding the power adjustment in contingency $k$
-and $\underline{p}_g, \overline{p}_g$ are two vectors encoding the lower and upper bounds on the
-active power generation.
+where $\Delta^k \in \mathbb{R}$ is a variable encoding the power adjustment in contingency $k$.
 The nonsmooth $\min$ and $\max$ operations clip $p_g^0 + \alpha_g \Delta^k$ to the bounds, and can be written as
-a set of complementarity constraints~\cite{baumrucker2008mpec}: for non-negative $\pi_{g+}^k \geq 0$
-and $\pi_{g-}^k \geq 0$ Equation~\eqref{eq:agc} is equivalent to,
-for all $k=1, \cdots, K$,
+a set of complementarity constraints~\cite{baumrucker2008mpec}: for non-negative $(\pi_{g+}^k, \pi_{g-}^k) \geq 0$, Equation~\eqref{eq:agc} is equivalent to, for all $k=1, \cdots, K$,
 \begin{equation}
   \label{eq:droopmpec}
   \begin{aligned}
@@ -564,11 +559,11 @@ that \eqref{eq:screening} is feasible for all the contingency $k=1,\cdots,K$.
 
 \section{Mathematical programs with complementarity constraints}
 The complementarity constraints complicate the solution of the problem \eqref{eq:scopf}.
-As such, they are usually reformulated with binary variables using a big-M method,
+As such, the complementarity constraints are usually reformulated with binary variables and a big-M reformulation,
 leading to the formulation of a mixed-integer nonlinear program (MINLP). However,
 the large-number of binary variables renders the MINLP quickly intractable.
-Instead, we choose to address directly the complementarity constraints
-and solve \eqref{eq:scopf} using an augmented Lagrangian method based on the algorithm NCL.
+Instead, we choose here to address directly the complementarity constraints
+and solve \eqref{eq:scopf} instead using an augmented Lagrangian method based on the algorithm NCL.
 We detail the formulation of the SCOPF~\eqref{eq:scopf} as a mathematical
 program with complementarity constraints (MPCC) in \S\ref{sec:mpcc:intro},
 and discuss the associated first-order complementarity conditions in \S\ref{sec:mpcc:stationary}.
@@ -591,8 +586,7 @@ the equivalent MPCC in vertical form:
   \end{aligned}
 \end{equation}
 with $w \in \mathbb{R}^n$ the variable aggregating the controls, states and slack variables
-and $c: \mathbb{R}^n \to \mathbb{R}^m$ a function aggregating all the equality and inequality constraints
-in \eqref{eq:scopf}.
+and $c: \mathbb{R}^n \to \mathbb{R}^m$ a function aggregating the constraints in \eqref{eq:scopf}.
 We partition the decision variable as $w = (w_0, w_1, w_2) \in \mathbb{R}^{n-2p} \times
 \mathbb{R}^p \times \mathbb{R}^p$ to isolate the variables contributing to the $p$ complementarity constraints.
 For multipliers $(\lambda, \xi, \mu_1, \mu_2) \in \mathbb{R}^{m} \times \mathbb{R}^{n-2p} \times \mathbb{R}^p \times \mathbb{R}^p$, we define
@@ -601,8 +595,8 @@ the MPCC Lagrangian as
   \mathcal{L}^{\mathrm{MPCC}}(w, \lambda, \xi, \mu) = \phi(w) + \lambda^\top c(w) \\ - \xi^\top w_0 - \mu_1^\top w_1 - \mu_2^\top w_2 \; .
 \end{multline}
 The complementarity constraints in \eqref{eq:mpcc} state that for $i=1,\cdots,p$, $w_{1i} w_{2i} = 0$
-and $(w_{1i}, w_{2i}) \geq 0$. As both variables appearing in the product are positive,
-the complementarity constraints rewrite equivalently with inequality constraints as $w_{1i} w_{2i} \leq 0$
+and $(w_{1i}, w_{2i}) \geq 0$. As both variables in the product are positive,
+the complementarity constraints rewrite equivalently as $w_{1i} w_{2i} \leq 0$
 and $(w_{1i}, w_{2i}) \geq 0$: this alternative formulation
 gives the best result when used in conjunction with an interior-point method~\cite{leyffer2006interior}.
 Thus, a popular reformulation of~\eqref{eq:mpcc} is:
@@ -629,9 +623,10 @@ fails for all feasible points. Indeed, suppose we have a single complementarity
 constraint with $(w_1, w_2) \geq 0$ and $w_1 w_2 \leq 0$. By definition, a feasible point $(w_1, w_2)$ satisfies
 MFCQ if there exists a feasible direction $(d_1, d_2)$ such that $d_1 > 0$ if $w_1 = 0$, $d_2 > 0$ if
 $w_2 = 0$ and $w_2 d_1 + w_1 d_2 < 0$. If $w_1 = 0$ and $w_2 > 0$, we get $d_1 > 0$ and $w_2 d_1 < 0$,
-which is a contradiction as $w_2$ is positive. If the complementarity constraint
+which is a contradiction as $w_2$ is positive. Same reasoning applies if $w_2 = 0$ and $w_1 > 0$.
+If the complementarity constraint
 is biactive (both $w_1 = 0$ and $w_2 = 0$) the condition $w_2 d_1 + w_1 d_2 < 0$ cannot hold.
-Hence MFCQ is not satisfied, and as a consequence the set of optimal multipliers $(\lambda, \nu)$ can be unbounded,
+Hence MFCQ is not satisfied, meaning the set of optimal multipliers $(\lambda, \nu)$ can be unbounded,
 leading to potential numerical issues in
 classical nonlinear programming solvers~\cite{leyffer2006interior}.
 
@@ -680,7 +675,7 @@ multipliers $(\lambda, \xi, \mu) \in \mathbb{R}^m \times \mathbb{R}^{2p}$ such t
 Conditions \eqref{eq:strongstationarity} are the KKT stationary solution of a relaxed nonlinear program~\cite{scheel2000mathematical} with no complementarity constraint.
 If the relaxed nonlinear program satisfies Linear Independence Constraint Qualification (LICQ),
 we say that MPCC-LICQ holds at $w \in \Omega$.
-Our goal is to find a strong stationary solution for \eqref{eq:mpcc}.
+Our goal is to find a strong stationary solution \eqref{eq:strongstationarity} for \eqref{eq:mpcc}.
 % Every $w \in \Omega$ satisfying strong stationarity satisfies Bouligand stationarity~\cite{scheel2000mathematical}, with equivalence if MPCC-LICQ holds.
 
 
@@ -709,7 +704,7 @@ apply any special treatment to the complementarity constraints.
 
 \subsection{Algorithm NCL}
 \label{sec:ncl:ncl}
-The augmented Lagrangian method needs a penalty $\rho^{(n)}$
+Let a penalty $\rho^{(n)}$
 and two multiplier estimates $(\lambda^{(n)}, \nu_0^{(n)}) \in \mathbb{R}^m \times \mathbb{R}^p$.
 When the problem has a mix of equality and inequality constraints,
 the augmented Lagrangian subproblem is defined as:
@@ -725,7 +720,7 @@ the $\max$ term implies that the second-order derivatives are not continuous eve
 and even when it is defined, the Hessian $\nabla_{x x}^2 \mathcal{L}_\rho(\cdot)$ gets ill-conditioned as we increase the penalty $\rho$.
 
 NCL is strictly equivalent to the classical augmented Lagrangian method,
-but uses a nonlinearly constrained formulation in the subproblems.
+but uses a nonlinearly constrained formulation in the subproblems~\eqref{eq:auglagsubpb}.
 For two free regularization variables $(r, t) \in \mathbb{R}^m \times \mathbb{R}^p$, NCL solves:
 \begin{equation}
   \label{eq:nclsubpb}
@@ -751,7 +746,9 @@ For a given forcing sequence $\{\eta^{(n)}\}_n$, NCL uses the classical updates:
   \item If $\|(r^{(n+1)}, t^{(n+1)})\|_\infty \leq \eta^{(n)}$, then
     \begin{equation*}
       \begin{aligned}
-      & (\lambda^{(n+1)}, \nu_0^{(n+1)}) = (\lambda^{(n)}, \nu_0^{(n)}) + \rho^{(n)} (r^{(n+1)}, t^{(n+1)}) \; ,\\
+      % & (\lambda^{(n+1)}, \nu_0^{(n+1)}) = (\lambda^{(n)}, \nu_0^{(n)}) + \rho^{(n)} (r^{(n+1)}, t^{(n+1)}) \; ,\\
+      & \lambda^{(n+1)} = \lambda^{(n)} + \rho^{(n)} r^{(n+1)} \; ,\;
+        \nu_0^{(n+1)} = \nu_0^{(n)} + \rho^{(n)} t^{(n+1)} \; , \\
       & \rho^{(n+1)} = \rho^{(n)} \; .
       \end{aligned}
     \end{equation*}
@@ -885,7 +882,7 @@ MadNLP uses an inertia correction mechanism to ensure the reduced Hessian
 If this condition is satisfied, the solution of the linear system~\eqref{eq:newtonsystem} is a valid descent direction for the filter. The reduced Hessian is positive definite if and only if the inertia
 of the system~\eqref{eq:newtonsystem} is $(n, m+p, 0)$.
 If the inertia is not correct, MadNLP adds a positive term on the diagonal
-entries of the matrix $A$ and increases it till the inertia becomes exactly equal to $(n, m+p, 0)$.
+entries of the matrix $A$ and increases it until the inertia becomes exactly equal to $(n, m+p, 0)$.
 This procedure requires computing multiple matrix factorization, and can be very costly.
 
 For that reason, the linear system~\eqref{eq:newtonsystem} is usually factorized using an inertia-revealing
@@ -1050,7 +1047,7 @@ We test MadNCL both on the CPU (using HSL MA57) and on the GPU (using NVIDIA cuD
 of contingencies $K$ for {\tt ACTIVSg500}. We display the total number of IPM iterations
 and the time to solution (in seconds). The symbol "-" indicates that the solver failed
 to find a solution.}
-\resizebox{.90\textwidth}{!}{
+\resizebox{.99\textwidth}{!}{
 \input{scalability2.tex}
 }
 \label{tab:scopfscalability}
@@ -1065,8 +1062,8 @@ report a different solution for {\tt 1354pegase} and {\tt 2869pegase}.
 We notice that MadNCL needs significantly more iterations
 for {\tt ACTIVSg2000} and {\tt 2869pegase}. This points to MadNCL's main limitation:
 as we increase the problem's dimension, we increase the degeneracy in the indefinite linear system~\eqref{eq:newtonsystem}.
-As a result, the filter line-search algorithm used internally to solve~\eqref{eq:nclsubpb} has to
-perform numerous primal-dual regularizations during the inertia correction, significantly impairing MadNCL's convergence (we have observed that the ill-conditioning arises mostly from the reformulation
+As a result, the filter line-search algorithm used internally to solve~\eqref{eq:nclsubpb}
+performs numerous primal-dual regularizations during the inertia correction, significantly impairing MadNCL's convergence (we have observed that the ill-conditioning arises mostly from the reformulation
 of \eqref{eq:pvpq}, when the reactive power lower-bound $\underline{q}_g$ is close to the upper-bound $\overline{q}_g$).
 For that reason, we have observed that MadNCL does not converge consistently on larger instances.
 We plan to address this issue in future work.
@@ -1081,7 +1078,7 @@ We plan to address this issue in future work.
   display the total number of IPM iterations and the time to solution (in
   seconds). The symbol "-" indicates that the solver failed to find a solution.
 }
-\resizebox{.7\textwidth}{!}{
+\resizebox{.8\textwidth}{!}{
 \input{tables.tex}
 }
 \label{tab:benchmark}
@@ -1093,7 +1090,7 @@ In this article, we have studied the solution of large-scale AC-SCOPFs
 using MadNCL, a GPU-accelerated solver. As illustrated by Figure~\ref{fig:scalability},
 MadNCL is significantly faster on the GPU than a similar solver running on the CPU,
 with a time per iteration decreased by a factor of almost 40 on the largest instances.
-As a result, MadNCL can find in less than 3 minutes a strongly stationary solution for AC-SCOPFs with almost a million decision variables, allowing instances with thousands of buses and
+MadNCL can find in less than 3 minutes a strongly stationary solution for AC-SCOPFs with almost a million decision variables, allowing instances with thousands of buses and
 hundred of contingencies to be tackled. In future work, we plan to move the threshold further:
 this would require addressing the ill-conditioning appearing in the IPM's Newton systems,
 caused by the millions of complementarity constraints found in AC-SCOPF with

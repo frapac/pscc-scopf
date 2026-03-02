@@ -1056,6 +1056,8 @@ to find a solution.}
 Second, we compare Knitro and MadNCL-GPU on different instances, with a varying number of contingencies $K$ and
 with a time limit set to 1h.
 The results are displayed in Table~\ref{tab:benchmark}.
+We emphasize that apart from the contingency screening used in \S\ref{sec:numerics:screening},
+our algorithm solves the problem \eqref{eq:scopf} frontally, without using any heuristic or structure exploiting method.
 On this new benchmark, we observe that MadNCL-GPU is consistently faster than Knitro. As in Table~\ref{tab:scopfscalability},
 we do not have any guarantee that Knitro converges to the same solution as MadNCL: they
 report a different solution for {\tt 1354pegase} and {\tt 2869pegase}.

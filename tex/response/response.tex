@@ -1,0 +1,285 @@
+\documentclass[10pt,a4paper]{article}
+%\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{eurosym}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{framed}
+
+\newenvironment{reviewer}
+{\begin{framed}\begin{minipage}{0.9\textwidth}\textbf{\reviewername.}\newline \it }%
+    {\end{minipage}\end{framed}}
+
+\newenvironment{quotereviewer}{\vspace{.5cm}{\underline\reviewername} ``\it\footnotesize}{''}
+% {\begin{framed}\begin{minipage}{.9\textwidth}\textbf{\reviewername.}\newline ``\it}%
+%     {''\end{minipage}\end{framed}}
+
+\newcommand{\answer}{\vspace{1mm}\underline{Answer.} }
+
+% improved to work inside math
+\newcommand{\nb}[3]{
+    {\colorbox{#2}{\bfseries\sffamily\tiny\textcolor{white}{#1}}}
+    {\textcolor{#2}{\text{$\blacktriangleright$}{\textcolor{#2}{#3}}\text{$\blacktriangleleft$}}}}
+
+
+\setlength{\parindent}{0pt}
+\newcommand{\red}[1]{\textcolor{red}{#1}}
+\newcommand{\todo}{\noindent\red{TODO: }}
+
+
+\begin{document}
+
+\title{\textbf{Answers to Reviewers}\\
+}
+%\author{}
+% \date{}
+\maketitle
+
+\section*{Introduction}
+We thank the reviewers for their comprehensive feedbacks on the previous
+version of our paper. The comments pointed to several limitations.
+We have revised the paper accordingly, and we believe that this new version addresses
+the shortcomings raised before by the reviewers.
+We have addressed one by one the comments made by the three reviewers in
+the following sections.
+
+\section{Editor}
+\def\reviewername{Editor}
+
+\begin{quotereviewer}
+The paper could be improved by providing more detail and background information (even at the cost of additional pages as needed) in an effort to make the paper self contained rather than reliant on the team's prior publications to understand key details. I would also suggest further numeric comparison to identify the improvements from using JuMP vs. ExaModels relative to other improvements. In other words, I would suggest providing numeric results with MadNCL-CPU+ExaModels vs. MadNCL-CPU+JuMP to show how much impact is due to the modeling language improvements alone.
+\end{quotereviewer}
+
+\answer
+We would like to thank the editor for their positive feedback. We have addressed
+their comments in the revision: the algorithm is described in more details in Section IV.A
+(in particular, the connection with the classical augmented Lagrangian algorithm),
+and we have added a new Section IV.C to describe in more length the direct linear solvers we are using.
+We have revised the numerical results following their suggestions: the Table II
+now compares different modelers (JuMP+sparse reverse AD, JuMP+symbolic AD and ExaModels).
+The respective times spent in the linear solver and in the modeler are decomposed explicitly
+in Figure 1. With these new results, we believe we can better assess what parts
+of the speed-up are induced by the linear algebra and by the modeler.
+We have also added additional results in Table III, this time with instances
+from the Challenge 1 of the GO-competition.
+
+
+\section{Reviewer 1}
+\def\reviewername{Reviewer~\#1}
+\bigskip
+
+\begin{quotereviewer}
+ 1. The manuscript states that formulation (8) is equivalent to the MPCC formulation (6), yet this equivalence is not explained. In particular, the complementarity condition in (6) implies ($w_1w_2 = 0$), but this product condition does not explicitly appear in (8).
+\end{quotereviewer}
+
+\answer
+We have added a sentence after Eq (8) to explain how to reformulate the complementarity constraints
+$0 \leq w_1 \perp w_2 \geq 0$ as $w_{1i} w_{2i} \leq 0$ for $(w_1, w_2) \geq 0$.
+This reformulation gives usually the best results when we use an interior-point
+method to solve the problem, as it is the case here (see e.g. [17]).
+
+\begin{quotereviewer}
+ 2. The technical description for Section IV needs to be improved significantly.
+- The definitions of the index sets are confusing between (10) and (11). For example, in (10), the set L+0 is defined for indices where $w_{1,i} > 0$. However, the conditions in (11) apply $w_{1,i} => 0$ for this set.
+- The derivation of the subproblem (12) is insufficiently explained. The roles of the regularization variables (r) and (t) are unclear: Are they required to be nonnegative? Why does the augmented Lagrangian objective penalize only certain variables, and what is the conceptual meaning of solving (12)?
+- The update rule for the penalty parameter ($\rho$) is not specified. Also, the text mentions updating ($\rho$) "using (x, r, t)," but the variable (x) is not defined in this context.
+- In general, it is unclear whether the proposed method is guaranteed to converge to a strongly stationary point of the MPCC. If a convergence guarantee exists, the authors should explain why. If not, they should clarify why this method is still appropriate beyond its GPU friendly structure.
+\end{quotereviewer}
+
+\answer
+We have followed the reviewer's suggestions and have improved the description
+of the NCL algorithm in Section IV.
+In particular, (i) we have explicited the connection
+between NCL and the classical augmented Lagrangian method, (ii) we have detailed
+the update rules we are using for $\rho$ and the multiplier estimates, (iii) we have
+clarified that the regularization variables $(r, t)$ are free.
+
+The algorithm is guaranteed to converge to a strongly stationary point,
+as established in [21].
+
+\begin{quotereviewer}
+3. The paper briefly mentions the signed Cholesky factorization and MadNLP, but these concepts need additional context. A brief technical explanation of the signed Cholesky factorization and how MadNLP differs from standard interior-point solvers would be beneficial for the audience, particularly regarding how it handles indefinite systems without pivoting.
+\end{quotereviewer}
+
+\answer
+We have added a new subsection IV.C to describe in more detail the signed
+Cholesky factorization and its relation to the classical Duff-Reid factorization
+classically used in nonlinear programming.
+
+\begin{quotereviewer}
+4. For Section V,
+- The comparison between MadNCL and Knitro should include detailed constraint violation information for all equality and inequality constraints, not only objective values and runtimes.
+- The authors should also provide constraint violation comparisons between Knitro and the version of MadNLP that uses the signed Cholesky based Newton system. Does this solver satisfy all constraints to the same accuracy as Knitro? The current manuscript does not make this clear.
+\end{quotereviewer}
+
+\answer
+The constraint violation is explicitly included in MadNCL's termination criterion:
+if a locally optimal solution is found, it is guaranteed to be below the termination tolerance (here, {\tt tol=1e-5}). MadNCL is solving the problem to the same accuracy as Knitro.
+
+\section{Reviewer 2}
+\def\reviewername{Reviewer~\#2}
+\bigskip
+
+
+\begin{quotereviewer}
+- The formulation in (8) with $W1W2e \le 0$ is initially hard to interpret: the authors should motivate the reason for forcing this term non-positive (i.e., rather than to 0).
+\end{quotereviewer}
+
+\answer
+We have added a new sentence after Eq (8) to explain how we obtain the reformulation
+of the complementarity constraints $0 \leq w_1 \perp w_2 \geq 0$ as $w_{1i} w_{2i} \leq 0$
+for $(w_1, w_2) \geq 0$. As explained in [17], this formulation is known to give
+better results with the interior-point algorithm.
+
+\begin{quotereviewer}
+- Can the authors comment on the condition number of the Newton system as a function of $\rho$ for a typical ACOPF problem?
+\end{quotereviewer}
+
+\answer
+The Newton system is symmetric indefinite, and as such its eigenvalues are both
+positive and negative and the condition number is not a well defined notion.
+If the Newton system is semi-quasi definite (SQD), the negative
+eigenvalues and positive eigenvalues can be bounded, as explained in that paper:
+\begin{quote}
+  Gould,  Simoncini. Spectral analysis of saddle point matrices with indefinite leading blocks. SIAM Journal on Matrix Analysis and Applications, 31(3), 1152-1171. 2010.
+\end{quote}
+However, these bounds are difficult to generalize for the system (18), which is not SQD.
+
+
+\begin{quotereviewer}
+- It is surprising that Knitro generally needs more, rather than fewer, iterations to converge, enough though the Augmented Lagrangian method introduces a penalty approximation.
+\end{quotereviewer}
+
+\answer
+When solving mathematical programs with complementarity constraints (MPCC), Knitro
+is using the $\ell_1$-penalty method introduced in [17]. Hence, both MadNCL and
+Knitro are using penalty approximations, explaining why Knitro can
+require more iterations to converge.
+
+\begin{quotereviewer}
+- Why does MadNCL-CPU need MORE iterations than MadNCL-GPU? I would expect pivoting on the CPU to help, not hurt!
+\end{quotereviewer}
+
+\answer
+The MPCC instances solved by MadNCL are difficult problems.
+As we approach towards the solution, the Newton system gets badly conditioned,
+and the linear solver becomes very sensitive to floating point approximations. Even on the CPU,
+we get different number of iterations if we replace HSL MA57 by HSL MA27.
+This behavior is further amplified on the GPU, as NVIDIA cuDSS solves the linear
+system asynchronously: as highlighted in the paper, we often observe a non-deterministic
+behavior with NVIDIA cuDSS (a common issue for parallel linear solvers).
+
+\section{Reviewer 3}
+\def\reviewername{Reviewer~\#3}
+\bigskip
+
+\begin{quotereviewer}
+ Overall, the work is clearly presented, studies a relevant problem, and gives straightforward and meaningful conclusions. I recommend that the work focus more on the SC-OPF setting with computational experiments. Specifically, some computational results should be shown on the datasets from Challenge 1 of the GO Competition, which were specifically designed to highlight this contingency model. With the understanding that the penalization in the GO model may allow for infeasible contingencies, some sort of screening can be used to ensure feasibility. Methods submitted to the GO competition were able to solve cases with >20,000 buses in under 10 minutes (see "Recent Developments in Security-Constrained AC Optimal Power Flow: Overview of Challenge 1 in the ARPA-E Grid Optimization Competition"). The results presented in this work show cases with <3,000 buses and a GPU-accelerated time under 5 minutes. It would be helpful to push the size and runtimes on which this method is evaluated closer to the frontier of the GO competition, and also include some discussion on why performance may not be competitive to leading algorithms from the competition (less decomposition, heuristics, prescreening, etc.)
+\end{quotereviewer}
+
+\answer
+We thank the reviewer for their positive and comprehensive feedback.
+We have followed their suggestions and added new instances from the
+Challenge 1 of the GO competition in Table III.
+We have also emphasized that our method is just using GPU-acceleration, without
+using any complicated screening heuristics or structure-exploiting methods:
+our primary goal is to assess the capabilities of GPU-accelerated optimization solvers to solve large-scale SCOPF problems.
+
+\begin{quotereviewer}
+ On the other hand, the description of strong stationarity in section III.B and the Lagrangians (7), (9) in section III.A do not seem vital to the exposition of the ALM. I recommend reducing this notation and providing a simpler (or text-based) description of strong stationarity, if needed to characterize the quality of the final solution.
+\end{quotereviewer}
+
+\answer
+We believe that the theoretical section is important to understand the challenges we are facing
+in the nonlinear programming solver MadNCL. As the editor has allowed us to use
+an additional page, we have decided to keep that section intact.
+
+\begin{quotereviewer}
+I also have significant questions about the contingency screening process. Section V.C suggests that contingencies are selected using the prescreening evaluation in Section V.B. Here, it is not clear whether the contingencies with low infeasibility or high infeasibility are selected. If high infeasibility contingencies are selected (then screened for structural feasibility), this should be clarified. However, if low infeasibility cases are selected, this makes the problem much easier. As the prescreening is around a base-case optimal solution, if contingencies with no infeasibility at this solution are added, the optimal solution to SC-OPF will be the base-case optimal solution (because the contingency constraints are not binding at this solution). Especially as the numerical results show that the optimal objectives do not change much as contingencies are added, it seems plausible that the low infeasibility screening method is being used. If so, the screening method needs to be changed to ensure that the results generalize to cases with binding contingencies.
+\end{quotereviewer}
+
+\answer
+The reviewer is right that the contingency screening process we are using remains basic.
+However, we believe that this is not the core of the paper, as our main interest is to assess
+the raw performance of GPU-accelerated optimization solvers on large-scale SCOPF problems.
+To address the reviewer's comments, we have added new instances from the Challenge 1 of
+the GO-competition, which are more complicated than our initial instances taken from MATPOWER.
+Our results show that MadNCL's performance remains consistent over these new instances.
+
+\begin{quotereviewer}
+1. In the introduction to Section II, provide more detail about the considerations and constraints in the base-case AC OPF model (line flow, line limits, operational bounds…), and how the base case connects to the contingencies.
+\end{quotereviewer}
+
+\answer
+We have added in Section II.A a detailed description of the SC-OPF model we are using.
+
+\begin{quotereviewer}
+2. When discussing the MFCQ, more detail is needed. I understand from the literature that MFCQ is never satisfied for problems with complementarity constraints (e.g., from Nonsmooth Approach to Optimization Problems with Equilibrium Constraints), however, this is due to the behavior of constraint gradients, not violation of strict feasibility. This discussion should be revised, and maybe include a relevant citation.
+\end{quotereviewer}
+
+\answer
+We have added at the end of Section III.B a paragraph that details why problem (9)
+does not satisfy MFCQ. The MFCQ is equivalent to the Slater condition for convex problems:
+in that case Slater is not satisfied if the problem has an empty relative interior, explaining
+our previous sentence. However, to clarify our description, we have removed any reference to the relative
+interior in the revised paper.
+
+\begin{quotereviewer}
+3. As mentioned above, in III.B, I believe much of this notation can be removed or reduced. Additionally, (11) seems to require that $(w1,w2) \geq 0$, as otherwise the sets $\mathcal{I}$ may not cover the whole index set.
+\end{quotereviewer}
+
+\answer
+The sets defined in Eq (11) are correct, and require a strict inequality to form
+a partition of the complementarity variables. Then, the strong stationarity conditions
+highlighted in (12) are defined from the partitions defined in (11), and we are free
+to relax the strict inequality as a greater-than-equal inequality.
+A similar exposition can be found e.g. in [17].
+
+\begin{quotereviewer}
+4. In Section IV.A, the presentation of outer and inner iterations is unclear. At each outer iteration, (12) is solved, and the inner iterations are IPM steps to solve this problem. Please clarify to this end.
+\end{quotereviewer}
+
+\answer
+We have clarified the presentation of the outer and inner iterations
+in the revision, section IV.A.
+
+\begin{quotereviewer}
+ 5. In IV.A, it would be helpful to give some detail about how the Lagrangian penalty parameters are updated.
+\end{quotereviewer}
+
+\answer
+We have added in Section IV.A the exact update rules we are using for the Lagrangian
+ penalty $\rho$ and the multiplier estimates.
+
+\begin{quotereviewer}
+ 6. I understand that, even if the problem (6) is feasible, the method may still generate an infeasible solution or diverging set of penalty parameters, perhaps depending on the solution to (12). If this is the case, it would be helpful to state so after the discussion of the behavior in the infeasible case (around eq. 13); if this is not correct, please explain that property in this section.
+\end{quotereviewer}
+
+\answer
+The reviewer is right about that, and it is a known limitation of augmented Lagrangian
+method, as discussed e.g. in [21]. We emphasize that the $\ell_1$ penalty methods
+are suffering from the same issue, as discussed in [17]. We have clarified this issue
+at the end of Section IV.A, after Eq (15).
+
+\begin{quotereviewer}
+8. In JuMP, symbolic autodifferentiation (using MathOptSymbolicAD.DefaultBackend() or similar) can show speedup on derivative computation for some large structured problems. If you are not already using this, it may be helpful to close the gap between ExaModels and JuMP, even though it may not feature the same level of parallelization.
+\end{quotereviewer}
+
+\answer
+We have added new numerical results comparing ExaModels with
+JuMP (using SparseReverseMode) and JuMP (using SymbolicAD). The results are
+shown in the revised paper, in the Table III. The Figure 1 has been modified
+to decompose the solution time between the time spent in the linear solver
+and the time spent in the modeler.
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: LaTeX
+%%% TeX-master: t
+%%% End:

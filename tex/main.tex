@@ -304,6 +304,8 @@
         \parbox{\textwidth}{\hrulefill \\ \small{24th Power Systems Computation Conference} \hfill \begin{minipage}{0.2\textwidth}\centering \vspace*{4pt} \includegraphics[scale=0.06]{PSCC_logo.png}\\\small{PSCC 2026} \end{minipage} \hfill \small{Limassol, Cyprus --- June 8-12, 2026}}%
 }
 
+% \newcommand{\add}[1]{{\color{blue} #1}}
+\newcommand{\add}[1]{#1}
 
 \begin{document}
 \title{
@@ -438,8 +440,8 @@ We denote by $K$ the number of contingencies, and refer to the base case by the 
 We suppose the system has $n_b$ buses, $n_\ell$ lines and $n_g$ generators.
 For $k=0, \cdots, K$, the voltage magnitudes and angles at buses are denoted by
 $(v_b^k, \theta_b^k) \in \mathbb{R}^{n_b} \times \mathbb{R}^{n_b}$,
-the loads by $(p_{\ell}, q_\ell) \in \mathbb{R}^{n_b} \times \mathbb{R}^{n_b}$ and the active and reactive power generations by $(p_g^k, q_g^k) \in \mathbb{R}^{n_g} \times \mathbb{R}^{n_g}$.
-The set of arcs in the network is denoted by $\mathcal{A}$.
+\add{the loads by $(p_{\ell}, q_\ell) \in \mathbb{R}^{n_b} \times \mathbb{R}^{n_b}$ and the active and reactive power generations by $(p_g^k, q_g^k) \in \mathbb{R}^{n_g} \times \mathbb{R}^{n_g}$.
+The set of arcs in the network is denoted by $\mathcal{A}$.}
 For $(a, b) \in \mathbb{R}^2$, we say that $a$ complements $b$ if $a \geq 0$, $b \geq 0$
 and $a b = 0$. The complementarity constraint is denoted by $0 \leq a \perp b \geq 0$.
 
@@ -455,7 +457,7 @@ for $k=0, 1,\cdots, K$,
   \underline{\theta}_b \leq \theta_b^k \leq \overline{\theta}_b \; .
   \end{aligned}
 \end{equation}
-The active and reactive power flow constraints at each bus are,
+\add{The active and reactive power flow constraints at each bus are,
 for $i=1, \cdots, n_b$:
 \begin{equation*}
   \begin{aligned}
@@ -475,7 +477,7 @@ parameters of the line $(i,j)$. The line current rating constraints are:
   \quad \forall (i, j) \in \mathcal{A} \; ,
 \end{equation*}
 with $\ell_{ij}^k$ the rate of line $(i, j)$ in contingency $k$ (equal to $0$ if the
-line has an outage in contingency $k$).
+line has an outage in contingency $k$).}
 
 \subsection{Recourse constraints}
 In SCOPF, the variation of the power production $p_g^k \in \mathbb{R}^{n_g}$ in contingency $k$
@@ -540,8 +542,8 @@ in \eqref{eq:droopmpec} and \eqref{eq:pvpq}, $h_k(\cdot)$ the operational
 constraints (line-flow and operational bounds) and $G(\cdot)$ and
 $H(\cdot)$ are two functions encoding the
 complementarity parts in \eqref{eq:droopmpec} and \eqref{eq:pvpq}.
-In contrast to the formulation used by the GO-competition~\cite{aravena2023recent}, we do not
-penalize the constraint violation in the objective using an $\ell_1$ penalty.
+\add{In contrast to the formulation used by the GO-competition~\cite{aravena2023recent}, we do not
+penalize the constraint violation in the objective using an $\ell_1$ penalty.}
 
 For a given base-case control $u_0$, the contingency $k$ is feasible if there is a solution
 $(x_k, u_k)$ to the nonlinear system with complementarity constraints:
@@ -558,12 +560,12 @@ The goal of \eqref{eq:scopf} is to find a base-case control $u_0$ such
 that \eqref{eq:screening} is feasible for all the contingency $k=1,\cdots,K$.
 
 \section{Mathematical programs with complementarity constraints}
-The complementarity constraints complicate the solution of the problem \eqref{eq:scopf}.
+\add{The complementarity constraints complicate the solution of the problem \eqref{eq:scopf}.
 As such, the complementarity constraints are usually reformulated with binary variables and a big-M reformulation,
 leading to the formulation of a mixed-integer nonlinear program (MINLP). However,
 the large-number of binary variables renders the MINLP quickly intractable.
 Instead, we choose here to address directly the complementarity constraints
-and solve \eqref{eq:scopf} instead using an augmented Lagrangian method based on the algorithm NCL.
+and solve \eqref{eq:scopf} instead using an augmented Lagrangian method based on the algorithm NCL.}
 We detail the formulation of the SCOPF~\eqref{eq:scopf} as a mathematical
 program with complementarity constraints (MPCC) in \S\ref{sec:mpcc:intro},
 and discuss the associated first-order complementarity conditions in \S\ref{sec:mpcc:stationary}.
@@ -594,12 +596,12 @@ the MPCC Lagrangian as
 \begin{multline}
   \mathcal{L}^{\mathrm{MPCC}}(w, \lambda, \xi, \mu) = \phi(w) + \lambda^\top c(w) \\ - \xi^\top w_0 - \mu_1^\top w_1 - \mu_2^\top w_2 \; .
 \end{multline}
-The complementarity constraints in \eqref{eq:mpcc} state that for $i=1,\cdots,p$, $w_{1i} w_{2i} = 0$
+\add{The complementarity constraints in \eqref{eq:mpcc} state that for $i=1,\cdots,p$, $w_{1i} w_{2i} = 0$
 and $(w_{1i}, w_{2i}) \geq 0$. As both variables in the product are positive,
 the complementarity constraints rewrite equivalently as $w_{1i} w_{2i} \leq 0$
 and $(w_{1i}, w_{2i}) \geq 0$: this alternative formulation
 gives the best result when used in conjunction with an interior-point method~\cite{leyffer2006interior}.
-Thus, a popular reformulation of~\eqref{eq:mpcc} is:
+Thus, a popular reformulation of~\eqref{eq:mpcc} is:}
 \begin{equation}
   \label{eq:mpccnlp}
   \begin{aligned}
@@ -618,7 +620,7 @@ The Lagrangian for \eqref{eq:mpccnlp} is
 \begin{multline}
   \mathcal{L}(w, \lambda, \xi, \nu) = \phi(w) + \lambda^\top c(w) \\ - \xi^\top w_0 - \nu_1^\top w_1 - \nu_2^\top w_2 + \nu_0^\top W_1 W_2 e \; .
 \end{multline}
-Problem~\eqref{eq:mpccnlp} is degenerate and the Mangasarian-Fromovitz constraint qualification (MFCQ)
+\add{Problem~\eqref{eq:mpccnlp} is degenerate and the Mangasarian-Fromovitz constraint qualification (MFCQ)
 fails for all feasible points. Indeed, suppose we have a single complementarity
 constraint with $(w_1, w_2) \geq 0$ and $w_1 w_2 \leq 0$. By definition, a feasible point $(w_1, w_2)$ satisfies
 MFCQ if there exists a feasible direction $(d_1, d_2)$ such that $d_1 > 0$ if $w_1 = 0$, $d_2 > 0$ if
@@ -628,7 +630,7 @@ If the complementarity constraint
 is biactive (both $w_1 = 0$ and $w_2 = 0$) the condition $w_2 d_1 + w_1 d_2 < 0$ cannot hold.
 Hence MFCQ is not satisfied, meaning the set of optimal multipliers $(\lambda, \nu)$ can be unbounded,
 leading to potential numerical issues in
-classical nonlinear programming solvers~\cite{leyffer2006interior}.
+classical nonlinear programming solvers~\cite{leyffer2006interior}.}
 
 \subsection{First-order stationary conditions}
 \label{sec:mpcc:stationary}
@@ -645,8 +647,8 @@ For any feasible point $w \in \Omega$, we define the index sets
     \mathcal{I}_{00}(w) = \{ i \in \{1, \cdots, p\} \; | \; w_{1,i} = 0 \, , \, w_{2,i} = 0 \} \; .
   \end{aligned}
 \end{equation}
-As for any $w \in \Omega$, $(w_1, w_2) \geq 0$ the sets \eqref{eq:indexsets} define
-a partition of $\{1, \cdots, p\}$.
+\add{As for any $w \in \Omega$, $(w_1, w_2) \geq 0$ the sets \eqref{eq:indexsets} define
+a partition of $\{1, \cdots, p\}$.}
 % If $\mathcal{I}_{00}(w)$ is empty, we say $w$ satisfies \emph{strict complementarity}.
 % A point $w \in \Omega$ is \emph{Bouligand-stationary}~\cite{scheel2000mathematical} if $d = 0$ solves the linear program
 % with complementarity constraints (LPCC):
@@ -699,12 +701,12 @@ In the next section, we interpret NCL as a mix of regularization and penalty-bas
 In this section, we present Algorithm NCL in \S\ref{sec:ncl:ncl} and
 analyze the structure of the Newton systems in \S\ref{sec:ncl:newton}.
 We show that NCL can solve the problem~\eqref{eq:mpccnlp} on the GPU.
-We emphasize that NCL treats \eqref{eq:mpccnlp} as a generic nonlinear program, and does not
-apply any special treatment to the complementarity constraints.
+\add{We emphasize that NCL treats \eqref{eq:mpccnlp} as a generic nonlinear program, and does not
+apply any special treatment to the complementarity constraints.}
 
 \subsection{Algorithm NCL}
 \label{sec:ncl:ncl}
-Let a penalty $\rho^{(n)}$
+\add{Let a penalty $\rho^{(n)}$
 and two multiplier estimates $(\lambda^{(n)}, \nu_0^{(n)}) \in \mathbb{R}^m \times \mathbb{R}^p$.
 When the problem has a mix of equality and inequality constraints,
 the augmented Lagrangian subproblem is defined as:
@@ -717,7 +719,7 @@ Upon finding appropriate multipliers estimates $(\lambda^{(n)}, \nu_0^{(n)})$ an
 the solution of \eqref{eq:auglagsubpb} converges to the solution of \eqref{eq:mpccnlp}~\cite{izmailov2012global}.
 However, the augmented Lagrangian $\mathcal{L}_\rho(\cdot)$ comes with two issues:
 the $\max$ term implies that the second-order derivatives are not continuous everywhere,
-and even when it is defined, the Hessian $\nabla_{x x}^2 \mathcal{L}_\rho(\cdot)$ gets ill-conditioned as we increase the penalty $\rho$.
+and even when it is defined, the Hessian $\nabla_{x x}^2 \mathcal{L}_\rho(\cdot)$ gets ill-conditioned as we increase the penalty $\rho$.}
 
 NCL is strictly equivalent to the classical augmented Lagrangian method,
 but uses a nonlinearly constrained formulation in the subproblems~\eqref{eq:auglagsubpb}.
@@ -730,18 +732,18 @@ For two free regularization variables $(r, t) \in \mathbb{R}^m \times \mathbb{R}
                       & W_1 W_2 e \leq t  \; , \; w \geq 0 \; .
   \end{aligned}
 \end{equation}
-The regularization $t$ plays the role of the Scholtes relaxation parameter (see \S\ref{sec:mpcc:solution})
+\add{The regularization $t$ plays the role of the Scholtes relaxation parameter (see \S\ref{sec:mpcc:solution})}
 and is penalized in the objective by the Augmented Lagrangian penalty.
 
-We make a distinction between the {outer} and the {inner} iterations.
+\add{We make a distinction between the {outer} and the {inner} iterations.
 At a given outer iteration $n$, NCL solves \eqref{eq:nclsubpb}
-with an interior-point method (IPM). The inner iterations refer to the IPM steps themselves.
+with an interior-point method (IPM). The inner iterations refer to the IPM steps themselves.}
 Only the objective changes between two successive outer iterations, hence the IPM
 can be efficiently warmstarted from the previous primal-dual solution.
 Once Subproblem~\eqref{eq:nclsubpb} is solved, we update the augmented Lagrangian
 parameters $(\rho^{(n)}, \lambda^{(n)}, \nu_0^{(n)})$ using the solution $(w^{n+1}, r^{n+1}, t^{n+1})$
 and proceed to the next outer iteration.
-For a given forcing sequence $\{\eta^{(n)}\}_n$, NCL uses the classical updates:
+\add{For a given forcing sequence $\{\eta^{(n)}\}_n$, NCL uses the classical updates:
 \begin{itemize}
   \item If $\|(r^{(n+1)}, t^{(n+1)})\|_\infty \leq \eta^{(n)}$, then
     \begin{equation*}
@@ -758,7 +760,7 @@ For a given forcing sequence $\{\eta^{(n)}\}_n$, NCL uses the classical updates:
       \nu_0^{(n+1)} = \nu_0^{(n)} \; , \;
       \rho^{(n+1)} = 10 \rho^{(n)} \; .
     \end{equation*}
-\end{itemize}
+\end{itemize}}
 We refer to \cite{montoison2025madncl} for a comprehensive description of the algorithm.
 It has been proven in \cite{izmailov2012global} that the augmented Lagrangian
 method converges to a strongly stationary solution $w \in \Omega$ of \eqref{eq:mpccnlp}
@@ -776,10 +778,10 @@ and NCL iterates converge to a stationary solution of the \emph{feasibility prob
                       & (w_0, w_1, w_2) \geq 0 \; , \; W_1 W_2 e \leq t \;.
   \end{aligned}
 \end{equation}
-As discussed in \cite{izmailov2012global}, the augmented Lagrangian algorithm
+\add{As discussed in \cite{izmailov2012global}, the augmented Lagrangian algorithm
 can converge to a solution of \eqref{eq:feaspb} even if the original problem
 is feasible: this is known caveat, and a similar situation can occur if we
-replace the augmented Lagrangian by a $\ell_1$ exact penalty~\cite{leyffer2006interior}.
+replace the augmented Lagrangian by a $\ell_1$ exact penalty~\cite{leyffer2006interior}.}
 % By checking the respective values in the regularization variables $r$ and $t$,
 % we can quickly assess which contingencies and constraints are rendering the SCOPF problem~\eqref{eq:scopf} infeasible.
 
@@ -877,6 +879,7 @@ the effect of this second degeneracy.
 
 \subsection{Linear solvers}
 \label{sec:algo:linsolvers}
+\add{
 MadNLP uses an inertia correction mechanism to ensure the reduced Hessian
 (the matrix $A$ projected onto the null-space of the Jacobian $B$) is positive definite.
 If this condition is satisfied, the solution of the linear system~\eqref{eq:newtonsystem} is a valid descent direction for the filter. The reduced Hessian is positive definite if and only if the inertia
@@ -902,6 +905,7 @@ efficiently using a signed Cholesky factorization, an algorithm that requires on
 static pivoting and is numerically stable.
 Furthermore, efficient parallel implementations of pivoting-free algorithms exist for GPUs,
 opening the door for a fast factorization routine for~\eqref{eq:newtonsystem}.
+}
 
 
 \section{Numerical results}
@@ -934,7 +938,7 @@ method described in \cite{leyffer2006interior}.
 As a contender in the GO-competition, Knitro has significantly improved the support of complementarity constraints in the recent years.
 
 We use instances from the MATPOWER library~\cite{zimmerman2010matpower} and
-from the Challenge 1 of the GO competition\footnote{\url{https://data.openei.org/submissions/6153}}.
+\add{from the Challenge 1 of the GO competition}\footnote{\url{https://data.openei.org/submissions/6153}}.
 In the following experiments the processor is an AMD EPYC 7430.
 The GPU is an NVIDIA A30 with 24GB of device memory.
 We provide the code to reproduce the benchmark in this repository: \url{github.com/frapac/pscc-scopf}.
@@ -951,7 +955,7 @@ are \emph{structurally infeasible} (there is no base solution $u_0$ such that
 $k, l$, there is no $u_0$ such that the two associated problems~\eqref{eq:screening} are feasible).
 In that case, NCL falls back automatically on the feasibility problem~\eqref{eq:feaspb}
 by increasing the penalty $\rho^{(n)}$ to infinity. As a result, the algorithm returns the
-regularizations $(r, t)$ minimizing the local infeasibility (with guarantees in the convex case~\cite{chiche2016augmented}).
+regularization variables $(r, t)$ minimizing the local infeasibility (with guarantees in the convex case~\cite{chiche2016augmented}).
 
 We assess the performance of MadNCL when scanning the contingencies in a given network.
 We compute a base case solution $u_0$ by solving the AC OPF problem, and solve
@@ -1012,18 +1016,18 @@ and ensure that all the contingencies are not structurally infeasible (so \eqref
 
 First, we consider the case {\tt ACTIVSg500} and increase the number of contingencies
 $K$ from $2$ to $256$ in \eqref{eq:scopf}: With $K=256$, the SCOPF~\eqref{eq:scopf} has almost 1 million variables.
-We detail the results in Table~\ref{tab:scopfscalability}. In addition to the performance we obtain with ExaModels on the CPU and on the GPU,
+We detail the results in Table~\ref{tab:scopfscalability}. \add{In addition to the performance we obtain with ExaModels on the CPU and on the GPU,
 we add two columns detailing the running time we obtain with MadNCL on the CPU using the default
 automatic differentiation in JuMP ({\tt SparseReverseMode}) and with symbolic automatic differentiation
-({\tt SymbolicAD}).
+({\tt SymbolicAD}).}
 Interestingly, the number of iterations in MadNCL depends on the modeler and on the linear solver: as we enter the large-scale
 regime, HSL MA57 and NVIDIA cuDSS are returning slightly different solutions, resulting in small discrepancies in the algorithm.
 This is amplified by the parallel nature of NVIDIA cuDSS: consecutive runs in NVIDIA cuDSS can be non-deterministic for large $K$.
 The objective value gives an insight on the quality of the solution: as the problem \eqref{eq:scopf} is nonconvex, different algorithms can converge
 to different solutions. However, we observe that MadNCL converges to the same solution as Knitro.
 We show in Figure~\ref{fig:scalability} the time per iteration (in seconds) against
-the number of contingencies for Knitro and MadNCL (running on the CPU with JuMP, SymbolicAD and ExaModels
-and on the GPU with ExaModels).
+the number of contingencies for Knitro and MadNCL \add{(running on the CPU with JuMP, SymbolicAD and ExaModels
+and on the GPU with ExaModels)}.
 In term of raw performance, MadNCL-CPU is slightly faster than Knitro because MadNCL
 benefits from faster evaluations of the derivatives with ExaModels (compared to JuMP).
 MadNCL-GPU decreases the time per iteration further by at least an order of magnitude:
@@ -1032,11 +1036,11 @@ very effective at solving the linear system \eqref{eq:newtonsystem}, explaining 
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=.4\textwidth]{./figures/scalability.pdf}
-\includegraphics[width=.4\textwidth]{./figures/scalability_decomposed.pdf}
+\includegraphics[width=.4\textwidth]{./scalability.pdf}
+\includegraphics[width=.4\textwidth]{./scalability_decomposed.pdf}
 \caption{Total time, time in linear solver and time in AD reported per iteration (in seconds), against number of contingencies $K$
-  when solving {\tt ACTIVSg500}. We compare Knitro (using JuMP)
-against MadNCL (using JuMP, SymbolicAD and ExaModels).
+  when solving {\tt ACTIVSg500}. \add{We compare Knitro (using JuMP)
+  against MadNCL (using JuMP, SymbolicAD and ExaModels)}.
 We test MadNCL both on the CPU (using HSL MA57) and on the GPU (using NVIDIA cuDSS).}
 \label{fig:scalability}
 \end{figure}
@@ -1048,7 +1052,24 @@ of contingencies $K$ for {\tt ACTIVSg500}. We display the total number of IPM it
 and the time to solution (in seconds). The symbol "-" indicates that the solver failed
 to find a solution.}
 \resizebox{.99\textwidth}{!}{
-\input{scalability2.tex}
+\begin{tabular}{|r|rr|rrr|rrr|rrr|rrr|rrr|}
+\hline
+\multicolumn{ 3}{|c|}{}  & \multicolumn{ 3}{c|}{\bf Knitro (ref)} & \multicolumn{ 12}{c|}{\bf MadNCL} \\
+\hline
+\multicolumn{ 3}{|c|}{}  & \multicolumn{ 3}{c|}{JuMP+MA57 (CPU)} & \multicolumn{ 3}{c|}{JuMP+MA57 (CPU)} & \multicolumn{ 3}{c|}{SymbolicAD+MA57 (CPU)} & \multicolumn{ 3}{c|}{ExaModels+MA57 (CPU)} & \multicolumn{ 3}{c|}{ExaModels+cuDSS (GPU)}  \\
+\hline
+K & nvar & ncon
+& Iter & Obj. & Time (s)& Iter & Obj. & Time (s)& Iter & Obj. & Time (s)& Iter & Obj. & Time (s)& Iter & Obj. & Time (s) \\
+\hline
+4 & 18k & 24k & 355 & 7.28 & 51.01 & 251 & 7.28 & 22.09 & 177 & 7.28 & 9.59 & 238 & 7.28 & 7.31 & 240 & 7.28 & 4.45\\
+8 & 33k & 44k & 418 & 7.28 & 88.94 & 146 & 7.28 & 24.33 & 141 & 7.28 & 12.43 & 435 & 7.28 & 29.23 & 290 & 7.28 & 7.77\\
+ 16 & 63k & 83k & 114 & 7.28 & 42.76 & 180 & 7.28 & 58.50 & 199 & 7.28 & 38.39 & 214 & 7.28 & 25.71 & 261 & 7.28 & 6.65\\
+ 32 & 123k & 162k & 345 & 7.28 & 283.68 & 162 & 7.28 & 95.79 & 163 & 7.28 & 58.05 & 587 & 7.28 & 166.20 & 568 & 7.28 & 23.64\\
+ 64 & 242k & 319k & 960 & 7.28 & 2159.59 & 480 & 7.28 & 624.88 & 577 & 7.28 & 459.88 & 528 & 7.28 & 273.08 & 453 & 7.28 & 27.96\\
+ 128 & 480k & 634k & - & 7.29 & 4852.33 & 339 & 7.29 & 919.33 & 315 & 7.29 & 495.03 & 415 & 7.29 & 421.09 & 265 & 7.29 & 46.40\\
+ 256 & 957k & 1263k & - & 7.30 & 11136.08 & 700 & 7.30 & 4811.44 & 693 & 7.30 & 2976.29 & 493 & 7.30 & 1120.16 & 609 & 7.30 & 170.75\\
+\hline
+\end{tabular}
 }
 \label{tab:scopfscalability}
 \end{table*}
@@ -1056,9 +1077,11 @@ to find a solution.}
 Second, we compare Knitro and MadNCL-GPU on different instances, with a varying number of contingencies $K$ and
 with a time limit set to 1h.
 The results are displayed in Table~\ref{tab:benchmark}.
-We emphasize that apart from the contingency screening used in \S\ref{sec:numerics:screening},
-our algorithm solves the problem \eqref{eq:scopf} frontally, without using any heuristic or structure exploiting method.
-On this new benchmark, we observe that MadNCL-GPU is consistently faster than Knitro. As in Table~\ref{tab:scopfscalability},
+\add{We use the contingency screening described in \S\ref{sec:numerics:screening} to remove
+the structurally infeasible contingencies.
+Apart from the contingency screening,
+our algorithm solves the problem \eqref{eq:scopf} frontally without using any heuristic or structure exploiting method to speed-up the solution time.}
+On this new benchmark, we observe that MadNCL-GPU is consistently faster than Knitro. As reported in Table~\ref{tab:scopfscalability},
 we do not have any guarantee that Knitro converges to the same solution as MadNCL: they
 report a different solution for {\tt 1354pegase} and {\tt 2869pegase}.
 We notice that MadNCL needs significantly more iterations
@@ -1080,8 +1103,44 @@ We plan to address this issue in future work.
   display the total number of IPM iterations and the time to solution (in
   seconds). The symbol "-" indicates that the solver failed to find a solution.
 }
-\resizebox{.8\textwidth}{!}{
-\input{tables.tex}
+\resizebox{.72\textwidth}{!}{
+\begin{tabular}{|rrr|rrrr|rrrr|}
+\hline
+\multicolumn{ 3}{|c|}{}  & \multicolumn{ 4}{c|}{\bf Knitro (ref)} & \multicolumn{ 4}{c|}{\bf MadNCL-GPU}  \\
+\hline
+Name & K & nvar
+               & Iter & Obj.  & Time (s) & Time/it (s) & Iter    & Obj.  & Time (s) & Time/it (s) \\
+\hline
+118            & 100  & 148k  & 217      & 12.97       & 394.15  & 1.82  & 73       & 12.97        & 31.60  & 0.43 \\
+300            & 10   & 31k   & 78       & 71.97       & 12.56   & 0.16  & 102      & 71.97        & 2.10   & 0.02 \\
+ACTIVSg200     & 10   & 19k   & 141      & 2.76        & 14.84   & 0.11  & 59       & 2.76         & 3.58   & 0.06 \\
+ACTIVSg200     & 50   & 90k   & 147      & 2.76        & 106.99  & 0.73  & 167      & 2.76         & 5.01   & 0.03 \\
+ACTIVSg200     & 100  & 178k  & 81       & 2.76        & 97.93   & 1.21  & 244      & 2.76         & 13.69  & 0.06 \\
+ACTIVSg500     & 10   & 43k   & 290      & 7.47        & 82.27   & 0.28  & 130      & 7.47         & 3.51   & 0.03 \\
+ACTIVSg500     & 50   & 201k  & 533      & 7.83        & 871.45  & 1.63  & 366      & 7.83         & 34.62  & 0.09 \\
+ACTIVSg500     & 100  & 398k  & 294      & 7.83        & 935.19  & 3.18  & 393      & 7.83         & 39.33  & 0.10 \\
+1354pegase     & 8    & 116k  & 43       & 7.41        & 53.82   & 1.25  & 124      & 7.42         & 7.66   & 0.06 \\
+1354pegase     & 16   & 222k  & 30       & 7.41        & 86.90   & 2.90  & 111      & 7.41         & 10.60  & 0.10 \\
+1354pegase     & 32   & 432k  & 116      & 7.41        & 656.68  & 5.66  & 410      & 7.42         & 83.86  & 0.20 \\
+ACTIVSg2000    & 8    & 187k  & 160      & 122.89      & 1442.62 & 9.02  & 989      & 122.89       & 129.80 & 0.13 \\
+ACTIVSg2000    & 16   & 356k  & 141      & 122.89      & 3001.10 & 21.28 & -        & 122.90       & 220.79 & 0.22 \\
+2869pegase     & 8    & 257k  & 65       & 13.40       & 308.77  & 4.75  & 334      & 13.42        & 41.08  & 0.12 \\
+2869pegase     & 16   & 488k  & 68       & 13.40       & 775.95  & 11.41 & 952      & 13.42        & 225.56 & 0.24 \\
+\hline
+Network05O-018 & 5    & 124k  & 161      & 5.73        & 311.84  & 1.94  & 1498     & 5.73         & 117.97 & 0.08 \\
+Network05O-018 & 10   & 228k  & 264      & 5.74        & 1396.88 & 5.29  & 2369     & 5.74         & 303.73 & 0.13 \\
+Network05O-018 & 20   & 436k  & -        & 5.74        & 3603.08 & 8.72  & -        & 5.74         & 604.85 & 0.20 \\
+Network07O-122 & 5    & 111k  & 135      & 0.04        & 219.90  & 1.63  & 786      & 0.04         & 42.80  & 0.05 \\
+Network07O-122 & 10   & 203k  & 303      & 0.04        & 952.59  & 3.14  & 1050     & 0.04         & 100.45 & 0.10 \\
+Network07O-122 & 20   & 388k  & 257      & 0.04        & 981.03  & 3.82  & 1093     & 0.04         & 116.36 & 0.11 \\
+Network09O-070 & 5    & 245k  & 46       & 0.05        & 245.72  & 5.34  & 81       & 0.05         & 12.60  & 0.16 \\
+Network09O-070 & 10   & 451k  & -        & 0.06        & 3600.08 & 8.51  & 101      & 0.05         & 18.66  & 0.18 \\
+Network09O-070 & 20   & 861k  & 135      & 0.05        & 2493.12 & 18.47 & 501      & 0.05         & 152.38 & 0.30 \\
+Network12O-030 & 5    & 518k  & -        & 10.39       & 3601.25 & 9.89  & -        & 10.41        & 265.41 & 0.44 \\
+Network12O-030 & 10   & 950k  & -        & 10.39       & 3611.73 & 19.42 & 875      & 10.39        & 413.43 & 0.47 \\
+Network12O-030 & 20   & 1814k & -        & 12.96       & 3646.33 & 33.76 & 679      & 10.39        & 474.33 & 0.70 \\
+\hline
+\end{tabular}
 }
 \label{tab:benchmark}
 \end{table*}
@@ -1183,8 +1242,130 @@ of this paper. We also thank the three anonymous reviewers for their valuable re
 
 % \end{thebibliography}
 
-\bibliographystyle{IEEEtran}
-\bibliography{IEEEabrv,biblio.bib}
+
+
+% \bibliographystyle{IEEEtran}
+% \bibliography{IEEEabrv,biblio.bib}
+
+% Generated by IEEEtran.bst, version: 1.14 (2015/08/26)
+\begin{thebibliography}{10}
+\providecommand{\url}[1]{#1}
+\csname url@samestyle\endcsname
+\providecommand{\newblock}{\relax}
+\providecommand{\bibinfo}[2]{#2}
+\providecommand{\BIBentrySTDinterwordspacing}{\spaceskip=0pt\relax}
+\providecommand{\BIBentryALTinterwordstretchfactor}{4}
+\providecommand{\BIBentryALTinterwordspacing}{\spaceskip=\fontdimen2\font plus
+\BIBentryALTinterwordstretchfactor\fontdimen3\font minus \fontdimen4\font\relax}
+\providecommand{\BIBforeignlanguage}[2]{{%
+\expandafter\ifx\csname l@#1\endcsname\relax
+\typeout{** WARNING: IEEEtran.bst: No hyphenation pattern has been}%
+\typeout{** loaded for the language `#1'. Using the pattern for}%
+\typeout{** the default language instead.}%
+\else
+\language=\csname l@#1\endcsname
+\fi
+#2}}
+\providecommand{\BIBdecl}{\relax}
+\BIBdecl
+
+\bibitem{stott2005security}
+B.~Stott, O.~Alsac, and A.~J. Monticelli, ``Security analysis and optimization,'' \emph{Proceedings of the IEEE}, vol.~75, no.~12, pp. 1623--1644, 1987.
+
+\bibitem{frank2016introduction}
+S.~Frank and S.~Rebennack, ``An introduction to optimal power flow: Theory, formulation, and examples,'' \emph{IIE transactions}, vol.~48, no.~12, pp. 1172--1197, 2016.
+
+\bibitem{alsac2002further}
+O.~Alsac, J.~Bright, M.~Prais, and B.~Stott, ``Further developments in {LP}-based optimal power flow,'' \emph{IEEE Transactions on Power Systems}, vol.~5, no.~3, pp. 697--711, 2002.
+
+\bibitem{coffrin2012approximating}
+C.~Coffrin, P.~Van~Hentenryck, and R.~Bent, ``Approximating line losses and apparent power in {AC} power flow linearizations,'' in \emph{2012 IEEE power and energy society general meeting}.\hskip 1em plus 0.5em minus 0.4em\relax IEEE, 2012, pp. 1--8.
+
+\bibitem{aravena2023recent}
+I.~Aravena, D.~K. Molzahn, S.~Zhang, C.~G. Petra, F.~E. Curtis, S.~Tu, A.~W{\"a}chter, E.~Wei, E.~Wong, A.~Gholami \emph{et~al.}, ``Recent developments in security-constrained {AC} optimal power flow: Overview of challenge 1 in the {ARPA-E} grid optimization competition,'' \emph{Operations research}, vol.~71, no.~6, pp. 1997--2014, 2023.
+
+\bibitem{wachter2006implementation}
+A.~W{\"a}chter and L.~T. Biegler, ``On the implementation of an interior-point filter line-search algorithm for large-scale nonlinear programming,'' \emph{Mathematical programming}, vol. 106, no.~1, pp. 25--57, 2006.
+
+\bibitem{waltz2006interior}
+R.~A. Waltz, J.~L. Morales, J.~Nocedal, and D.~Orban, ``An interior algorithm for nonlinear optimization that combines line search and trust region steps,'' \emph{Mathematical programming}, vol. 107, no.~3, pp. 391--408, 2006.
+
+\bibitem{capitanescu2011state}
+F.~Capitanescu, J.~M. Ramos, P.~Panciatici, D.~Kirschen, A.~M. Marcolini, L.~Platbrood, and L.~Wehenkel, ``State-of-the-art, challenges, and future trends in security constrained optimal power flow,'' \emph{Electric power systems research}, vol.~81, no.~8, pp. 1731--1741, 2011.
+
+\bibitem{zhao2008pv}
+J.~Zhao, H.-D. Chiang, H.~Li, and P.~Ju, ``On {PV-PQ} bus type switching logic in power flow computation,'' in \emph{Power Systems Computation Conference (PSCC), Glasgow, Scotland}, 2008.
+
+\bibitem{sundaresh2014modified}
+L.~Sundaresh and P.~N. Rao, ``A modified {N}ewton--{R}aphson load flow scheme for directly including generator reactive power limits using complementarity framework,'' \emph{Electric power systems research}, vol. 109, pp. 45--53, 2014.
+
+\bibitem{murray2015robust}
+W.~Murray, T.~Tinoco De~Rubira, and A.~Wigington, ``A robust and informative method for solving large-scale power flow problems,'' \emph{Computational optimization and applications}, vol.~62, no.~2, pp. 431--475, 2015.
+
+\bibitem{rosehart2005optimal}
+W.~Rosehart, C.~Roman, and A.~Schellenberg, ``Optimal power flow with complementarity constraints,'' \emph{IEEE Transactions on Power Systems}, vol.~20, no.~2, pp. 813--822, 2005.
+
+\bibitem{nurkanovic2024}
+\BIBentryALTinterwordspacing
+A.~Nurkanović, A.~Pozharskiy, and M.~Diehl, ``Solving mathematical programs with complementarity constraints arising in nonsmooth optimal control,'' \emph{Vietnam Journal of Mathematics}, vol.~53, no.~3, p. 659–697, Aug. 2024. [Online]. Available: \url{http://dx.doi.org/10.1007/s10013-024-00704-z}
+\BIBentrySTDinterwordspacing
+
+\bibitem{curtis2023decomposition}
+F.~E. Curtis, D.~K. Molzahn, S.~Tu, A.~W{\"a}chter, E.~Wei, and E.~Wong, ``A decomposition algorithm with fast identification of critical contingencies for large-scale security-constrained {AC-OPF},'' \emph{Operations Research}, vol.~71, no.~6, pp. 2031--2044, 2023.
+
+\bibitem{gholami2023admm}
+A.~Gholami, K.~Sun, S.~Zhang, and X.~A. Sun, ``An {ADMM}-based distributed optimization method for solving security-constrained alternating current optimal power flow,'' \emph{Operations Research}, vol.~71, no.~6, pp. 2045--2060, 2023.
+
+\bibitem{petra2023surrogate}
+C.~G. Petra and I.~Aravena, ``A surrogate-based asynchronous decomposition technique for realistic security-constrained optimal power flow problems,'' \emph{Operations Research}, vol.~71, no.~6, pp. 2015--2030, 2023.
+
+\bibitem{leyffer2006interior}
+S.~Leyffer, G.~L{\'o}pez-Calva, and J.~Nocedal, ``Interior methods for mathematical programs with complementarity constraints,'' \emph{SIAM Journal on Optimization}, vol.~17, no.~1, pp. 52--77, 2006.
+
+\bibitem{ma2017stabilized}
+D.~Ma, K.~L. Judd, D.~Orban, and M.~A. Saunders, ``Stabilized optimization via an {NCL} algorithm,'' in \emph{Numerical Analysis and Optimization}.\hskip 1em plus 0.5em minus 0.4em\relax Springer, 2017, pp. 173--191.
+
+\bibitem{montoison2025madncl}
+A.~Montoison, F.~Pacaud, M.~Saunders, S.~Shin, and D.~Orban, ``{MadNCL}: A {GPU} implementation of algorithm {NCL} for large-scale, degenerate nonlinear programs,'' \emph{arXiv preprint arXiv:2510.05885}, 2025.
+
+\bibitem{chiche2016augmented}
+A.~Chiche and J.~C. Gilbert, ``How the augmented {L}agrangian algorithm can deal with an infeasible convex quadratic optimization problem,'' \emph{Journal of Convex Analysis}, vol.~23, no.~2, 2016.
+
+\bibitem{izmailov2012global}
+A.~F. Izmailov, M.~V. Solodov, and E.~Uskov, ``Global convergence of augmented {L}agrangian methods applied to optimization problems with degenerate constraints, including problems with complementarity constraints,'' \emph{SIAM Journal on Optimization}, vol.~22, no.~4, pp. 1579--1606, 2012.
+
+\bibitem{shin2024accelerating}
+S.~Shin, M.~Anitescu, and F.~Pacaud, ``Accelerating optimal power flow with {GPUs}: {SIMD} abstraction of nonlinear programs and condensed-space interior-point methods,'' \emph{Electric Power Systems Research}, vol. 236, p. 110651, 2024.
+
+\bibitem{baumrucker2008mpec}
+B.~Baumrucker, J.~G. Renfro, and L.~T. Biegler, ``{MPEC} problem formulations and solution strategies with chemical engineering applications,'' \emph{Computers \& Chemical Engineering}, vol.~32, no.~12, pp. 2903--2913, 2008.
+
+\bibitem{scheel2000mathematical}
+H.~Scheel and S.~Scholtes, ``Mathematical programs with complementarity constraints: Stationarity, optimality, and sensitivity,'' \emph{Mathematics of Operations Research}, vol.~25, no.~1, pp. 1--22, 2000.
+
+\bibitem{fletcher2006local}
+R.~Fletcher, S.~Leyffer, D.~Ralph, and S.~Scholtes, ``Local convergence of {SQP} methods for mathematical programs with equilibrium constraints,'' \emph{SIAM Journal on Optimization}, vol.~17, no.~1, pp. 259--286, 2006.
+
+\bibitem{scholtes2001convergence}
+S.~Scholtes, ``Convergence properties of a regularization scheme for mathematical programs with complementarity constraints,'' \emph{SIAM Journal on Optimization}, vol.~11, no.~4, pp. 918--936, 2001.
+
+\bibitem{ralph2004some}
+D.~Ralph and S.~J. Wright, ``Some properties of regularization and penalization schemes for {MPECs},'' \emph{Optimization Methods and Software}, vol.~19, no.~5, pp. 527--556, 2004.
+
+\bibitem{demiguel2005two}
+V.~DeMiguel, M.~P. Friedlander, F.~J. Nogales, and S.~Scholtes, ``A two-sided relaxation scheme for mathematical programs with equilibrium constraints,'' \emph{SIAM Journal on Optimization}, vol.~16, no.~2, pp. 587--609, 2005.
+
+\bibitem{duff1983multifrontal}
+I.~S. Duff and J.~K. Reid, ``The multifrontal solution of indefinite sparse symmetric linear,'' \emph{ACM Transactions on Mathematical Software (TOMS)}, vol.~9, no.~3, pp. 302--325, 1983.
+
+\bibitem{zimmerman2010matpower}
+R.~D. Zimmerman, C.~E. Murillo-S{\'a}nchez, and R.~J. Thomas, ``Matpower: Steady-state operations, planning, and analysis tools for power systems research and education,'' \emph{IEEE Transactions on power systems}, vol.~26, no.~1, pp. 12--19, 2010.
+
+\bibitem{capitanescu2007contingency}
+F.~Capitanescu, M.~Glavic, D.~Ernst, and L.~Wehenkel, ``Contingency filtering techniques for preventive security-constrained optimal power flow,'' \emph{IEEE Transactions on Power Systems}, vol.~22, no.~4, pp. 1690--1697, 2007.
+
+\end{thebibliography}
+
 
 
 % that's all folks
